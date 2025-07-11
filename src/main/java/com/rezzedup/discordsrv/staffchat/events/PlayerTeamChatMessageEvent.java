@@ -23,37 +23,36 @@
 package com.rezzedup.discordsrv.staffchat.events;
 
 import com.rezzedup.discordsrv.staffchat.ChatService;
-import org.bukkit.Bukkit;
-import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 
-public class ConsoleStaffChatMessageEvent extends StaffChatMessageEvent<ConsoleCommandSender, String> {
-	public ConsoleStaffChatMessageEvent(String text) {
-		super(Bukkit.getConsoleSender(), text, text);
-	}
-	
-	@Override
-	public final ChatService getSource() {
-		return ChatService.MINECRAFT;
-	}
-	
-	@Override
-	public final ChatService getDestination() {
-		return ChatService.DISCORD;
-	}
-	
-	//
-	//  - - - HandlerList boilerplate - - -
-	//
-	
-	public static final HandlerList HANDLERS = new HandlerList();
-	
-	@Override
-	public HandlerList getHandlers() {
-		return HANDLERS;
-	}
-	
-	public static HandlerList getHandlerList() {
-		return HANDLERS;
-	}
+public class PlayerTeamChatMessageEvent extends TeamChatMessageEvent<Player, String> {
+    public PlayerTeamChatMessageEvent(Player author, String text) {
+        super(author, text, text);
+    }
+    
+    @Override
+    public final ChatService getSource() {
+        return ChatService.MINECRAFT;
+    }
+    
+    @Override
+    public final ChatService getDestination() {
+        return ChatService.DISCORD;
+    }
+    
+    //
+    //  - - - HandlerList boilerplate - - -
+    //
+    
+    public static final HandlerList HANDLERS = new HandlerList();
+    
+    @Override
+    public HandlerList getHandlers() {
+        return HANDLERS;
+    }
+    
+    public static HandlerList getHandlerList() {
+        return HANDLERS;
+    }
 }

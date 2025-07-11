@@ -24,7 +24,9 @@ package com.rezzedup.discordsrv.staffchat;
 
 import com.rezzedup.discordsrv.staffchat.config.StaffChatConfig;
 import com.rezzedup.discordsrv.staffchat.events.AutoStaffChatToggleEvent;
+import com.rezzedup.discordsrv.staffchat.events.AutoTeamChatToggleEvent;
 import com.rezzedup.discordsrv.staffchat.events.ReceivingStaffChatToggleEvent;
+import com.rezzedup.discordsrv.staffchat.events.ReceivingTeamChatToggleEvent;
 import community.leaf.configvalues.bukkit.YamlValue;
 import community.leaf.configvalues.bukkit.data.YamlDataFile;
 import community.leaf.configvalues.bukkit.util.Sections;
@@ -96,11 +98,14 @@ public class Data extends YamlDataFile implements StaffChatData {
 		return Optional.ofNullable(profilesByUuid.get(uuid));
 	}
 	
+	@Override
 	public void updateProfile(Player player) {
 		@NullOr Profile profile = profilesByUuid.get(player.getUniqueId());
+		boolean isStaffMember = Permissions.ACCESS.allows(player);
+		boolean isTeamMember = Permissions.TEAM_ACCESS.allows(player);
 		
-		if (Permissions.ACCESS.allows(player)) {
-			// Ensure that this staff member has an active profile.
+		if (isStaffMember || isTeamMember) {
+			// Ensure that this staff/team member has an active profile.
 			if (profile == null) {
 				profile = (Profile) getOrCreateProfile(player);
 			}
@@ -108,20 +113,32 @@ public class Data extends YamlDataFile implements StaffChatData {
 			// If leaving the staff chat is disabled...
 			if (!plugin.config().getOrDefault(StaffChatConfig.LEAVING_STAFFCHAT_ENABLED)) {
 				// ... and this staff member previously left the staff chat ...
-				if (profile.left != null) {
+				if (isStaffMember && profile.left != null) {
 					// Bring them back.
 					profile.receivesStaffChatMessages(true);
 				}
 			}
+			
+			// If leaving the team chat is disabled...
+			if (!plugin.config().getOrDefault(StaffChatConfig.LEAVING_TEAMCHAT_ENABLED)) {
+				// ... and this team member previously left the team chat ...
+				if (isTeamMember && profile.teamLeft != null) {
+					// Bring them back.
+					profile.receivesTeamChatMessages(true);
+				}
+			}
 		} else {
-			// Not a staff member but has a loaded profile...
+			// Not a staff/team member but has a loaded profile...
 			if (profile != null) {
-				// Notify that they're no longer talking in staff chat.
+				// Notify that they're no longer talking in staff/team chat.
 				if (profile.automaticStaffChat()) {
 					profile.automaticStaffChat(false);
 				}
+				if (profile.automaticTeamChat()) {
+					profile.automaticTeamChat(false);
+				}
 				
-				// No longer staff, delete data.
+				// No longer staff/team, delete data.
 				profile.clearStoredProfileData();
 				
 				// Remove from the map.
@@ -132,10 +149,13 @@ public class Data extends YamlDataFile implements StaffChatData {
 	
 	static class Profile implements StaffChatProfile {
 		static final YamlValue<Instant> AUTO_TOGGLE_DATE = YamlValue.ofInstant("toggles.auto").maybe();
-		
 		static final YamlValue<Instant> LEFT_TOGGLE_DATE = YamlValue.ofInstant("toggles.left").maybe();
-		
 		static final YamlValue<Boolean> MUTED_SOUNDS_TOGGLE = YamlValue.ofBoolean("toggles.muted-sounds").maybe();
+		
+		// Team chat toggles
+		static final YamlValue<Instant> TEAM_AUTO_TOGGLE_DATE = YamlValue.ofInstant("toggles.team-auto").maybe();
+		static final YamlValue<Instant> TEAM_LEFT_TOGGLE_DATE = YamlValue.ofInstant("toggles.team-left").maybe();
+		static final YamlValue<Boolean> TEAM_MUTED_SOUNDS_TOGGLE = YamlValue.ofBoolean("toggles.team-muted-sounds").maybe();
 		
 		private final StaffChatPlugin plugin;
 		private final YamlDataFile yaml;
@@ -145,6 +165,11 @@ public class Data extends YamlDataFile implements StaffChatData {
 		private @NullOr Instant left;
 		private boolean mutedSounds = false;
 		
+		// Team chat state
+		private @NullOr Instant teamAuto;
+		private @NullOr Instant teamLeft;
+		private boolean teamMutedSounds = false;
+		
 		Profile(StaffChatPlugin plugin, YamlDataFile yaml, UUID uuid) {
 			this.plugin = plugin;
 			this.yaml = yaml;
@@ -153,9 +178,15 @@ public class Data extends YamlDataFile implements StaffChatData {
 			if (plugin.config().getOrDefault(StaffChatConfig.PERSIST_TOGGLES)) {
 				Sections.get(yaml.data(), path()).ifPresent(section ->
 				{
+					// Staff chat toggles
 					auto = AUTO_TOGGLE_DATE.get(section).orElse(null);
 					left = LEFT_TOGGLE_DATE.get(section).orElse(null);
 					mutedSounds = MUTED_SOUNDS_TOGGLE.get(section).orElse(false);
+					
+					// Team chat toggles
+					teamAuto = TEAM_AUTO_TOGGLE_DATE.get(section).orElse(null);
+					teamLeft = TEAM_LEFT_TOGGLE_DATE.get(section).orElse(null);
+					teamMutedSounds = TEAM_MUTED_SOUNDS_TOGGLE.get(section).orElse(false);
 				});
 			}
 		}
@@ -168,6 +199,8 @@ public class Data extends YamlDataFile implements StaffChatData {
 		public UUID uuid() {
 			return uuid;
 		}
+		
+		// Staff chat methods
 		
 		@Override
 		public Optional<Instant> sinceEnabledAutoChat() {
@@ -218,10 +251,66 @@ public class Data extends YamlDataFile implements StaffChatData {
 		@Override
 		public void receivesStaffChatSounds(boolean enabled) {
 			mutedSounds = !enabled;
+			updateStoredProfileData();
+		}
+		
+		// Team chat methods
+		
+		@Override
+		public Optional<Instant> sinceEnabledAutoTeamChat() {
+			return Optional.ofNullable(teamAuto);
+		}
+		
+		@Override
+		public boolean automaticTeamChat() {
+			return teamAuto != null;
+		}
+		
+		@Override
+		public void automaticTeamChat(boolean enabled) {
+			if (plugin.events().call(new AutoTeamChatToggleEvent(this, enabled)).isCancelled()) {
+				return;
+			}
+			
+			teamAuto = (enabled) ? Instant.now() : null;
+			updateStoredProfileData();
+		}
+		
+		@Override
+		public Optional<Instant> sinceLeftTeamChat() {
+			return Optional.ofNullable(teamLeft);
+		}
+		
+		@Override
+		public boolean receivesTeamChatMessages() {
+			// hasn't left the team chat or leaving is disabled outright
+			return teamLeft == null || !plugin.config().getOrDefault(StaffChatConfig.LEAVING_TEAMCHAT_ENABLED);
+		}
+		
+		@Override
+		public void receivesTeamChatMessages(boolean enabled) {
+			if (plugin.events().call(new ReceivingTeamChatToggleEvent(this, enabled)).isCancelled()) {
+				return;
+			}
+			
+			teamLeft = (enabled) ? null : Instant.now();
+			updateStoredProfileData();
+		}
+		
+		@Override
+		public boolean receivesTeamChatSounds() {
+			return !teamMutedSounds;
+		}
+		
+		@Override
+		public void receivesTeamChatSounds(boolean enabled) {
+			teamMutedSounds = !enabled;
+			updateStoredProfileData();
 		}
 		
 		boolean hasDefaultSettings() {
-			return auto == null && left == null && !mutedSounds;
+			return auto == null && left == null && !mutedSounds
+				&& teamAuto == null && teamLeft == null && !teamMutedSounds;
 		}
 		
 		void clearStoredProfileData() {
@@ -245,9 +334,15 @@ public class Data extends YamlDataFile implements StaffChatData {
 			
 			ConfigurationSection section = Sections.getOrCreate(yaml.data(), path());
 			
+			// Staff chat toggles
 			AUTO_TOGGLE_DATE.set(section, auto);
 			LEFT_TOGGLE_DATE.set(section, left);
 			MUTED_SOUNDS_TOGGLE.set(section, mutedSounds);
+			
+			// Team chat toggles
+			TEAM_AUTO_TOGGLE_DATE.set(section, teamAuto);
+			TEAM_LEFT_TOGGLE_DATE.set(section, teamLeft);
+			TEAM_MUTED_SOUNDS_TOGGLE.set(section, teamMutedSounds);
 			
 			yaml.updated(true);
 		}

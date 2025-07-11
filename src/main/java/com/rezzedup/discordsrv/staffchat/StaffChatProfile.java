@@ -48,8 +48,37 @@ public interface StaffChatProfile {
 	
 	void receivesStaffChatSounds(boolean enabled);
 	
+	// Team chat methods
+	Optional<Instant> sinceEnabledAutoTeamChat();
+	
+	boolean automaticTeamChat();
+	
+	void automaticTeamChat(boolean enabled);
+	
+	Optional<Instant> sinceLeftTeamChat();
+	
+	boolean receivesTeamChatMessages();
+	
+	void receivesTeamChatMessages(boolean enabled);
+	
+	boolean receivesTeamChatSounds();
+	
+	void receivesTeamChatSounds(boolean enabled);
+	
 	default void toggleAutomaticStaffChat() {
-		automaticStaffChat(!automaticStaffChat());
+		boolean newState = !automaticStaffChat();
+		automaticStaffChat(newState);
+		if (newState && automaticTeamChat()) {
+			automaticTeamChat(false);
+		}
+	}
+	
+	default void toggleAutomaticTeamChat() {
+		boolean newState = !automaticTeamChat();
+		automaticTeamChat(newState);
+		if (newState && automaticStaffChat()) {
+			automaticStaffChat(false);
+		}
 	}
 	
 	default Optional<Player> toPlayer() {

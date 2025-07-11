@@ -23,24 +23,41 @@
 package com.rezzedup.discordsrv.staffchat.listeners;
 
 import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
+import github.scarsz.discordsrv.api.ListenerPriority;
 import github.scarsz.discordsrv.api.Subscribe;
-import github.scarsz.discordsrv.api.events.DiscordGuildMessagePreProcessEvent;
+import github.scarsz.discordsrv.api.events.DiscordGuildMessageReceivedEvent;
+import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
+import pl.tlinkowski.annotation.basic.NullOr;
 
-@SuppressWarnings("unused")
 public class DiscordStaffChatListener {
-	private final StaffChatPlugin plugin;
-	
-	public DiscordStaffChatListener(StaffChatPlugin plugin) {
-		this.plugin = plugin;
-	}
-	
-	@Subscribe
-	public void onDiscordChat(DiscordGuildMessagePreProcessEvent event) {
-		if (event.getChannel().equals(plugin.getDiscordChannelOrNull())) {
-			event.setCancelled(true); // Cancel this message from getting sent to global chat.
-			
-			// Handle this on the main thread next tick.
-			plugin.sync().run(() -> plugin.submitMessageFromDiscord(event.getAuthor(), event.getMessage()));
-		}
-	}
+    private final StaffChatPlugin plugin;
+    
+    public DiscordStaffChatListener(StaffChatPlugin plugin) {
+        this.plugin = plugin;
+    }
+    
+    @Subscribe(priority = ListenerPriority.NORMAL)
+    public void onDiscordMessage(DiscordGuildMessageReceivedEvent event) {
+        if (event.getAuthor().isBot()) {
+            return;
+        }
+        
+        @NullOr TextChannel staffChannel = plugin.getDiscordChannelOrNull();
+        @NullOr TextChannel teamChannel = plugin.getTeamDiscordChannelOrNull();
+        
+        if (staffChannel != null && event.getChannel().getId().equals(staffChannel.getId())) {
+            plugin.debug(getClass()).log(event, () ->
+                "Discord staff chat message by " + event.getMember() + " in " + event.getChannel()
+            );
+            
+            plugin.submitMessageFromDiscord(event.getAuthor(), event.getMessage());
+        } 
+        else if (teamChannel != null && event.getChannel().getId().equals(teamChannel.getId())) {
+            plugin.debug(getClass()).log(event, () ->
+                "Discord team chat message by " + event.getMember() + " in " + event.getChannel()
+            );
+            
+            plugin.submitTeamMessageFromDiscord(event.getAuthor(), event.getMessage());
+        }
+    }
 }

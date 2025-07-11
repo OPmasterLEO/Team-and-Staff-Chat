@@ -38,15 +38,29 @@ public interface StaffChatAPI {
 	
 	@NullOr TextChannel getDiscordChannelOrNull();
 	
+	@NullOr TextChannel getTeamDiscordChannelOrNull();
+	
 	void submitMessageFromConsole(String message);
 	
 	void submitMessageFromPlayer(Player author, String message);
 	
 	void submitMessageFromDiscord(User author, Message message);
 	
+	void submitTeamMessageFromConsole(String message);
+	
+	void submitTeamMessageFromPlayer(Player author, String message);
+	
+	void submitTeamMessageFromDiscord(User author, Message message);
+	
 	default Stream<? extends Player> onlineStaffChatParticipants() {
 		return Bukkit.getOnlinePlayers().stream()
 			.filter(Permissions.ACCESS::allows)
 			.filter(data()::isReceivingStaffChatMessages);
+	}
+	
+	default Stream<? extends Player> onlineTeamChatParticipants() {
+		return Bukkit.getOnlinePlayers().stream()
+			.filter(Permissions.TEAM_ACCESS::allows)
+			.filter(data()::isReceivingTeamChatMessages);
 	}
 }

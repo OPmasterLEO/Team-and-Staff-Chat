@@ -27,7 +27,6 @@ import community.leaf.eventful.bukkit.annotations.EventListener;
 import org.bukkit.event.Listener;
 import org.bukkit.event.server.PluginEnableEvent;
 
-@SuppressWarnings("unused")
 public class DiscordSrvLoadedLaterListener implements Listener {
 	private final StaffChatPlugin plugin;
 	

@@ -20,40 +20,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.rezzedup.discordsrv.staffchat.events;
+package com.rezzedup.discordsrv.staffchat.commands;
 
-import com.rezzedup.discordsrv.staffchat.ChatService;
-import org.bukkit.Bukkit;
+import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.event.HandlerList;
+import org.bukkit.entity.Player;
 
-public class ConsoleStaffChatMessageEvent extends StaffChatMessageEvent<ConsoleCommandSender, String> {
-	public ConsoleStaffChatMessageEvent(String text) {
-		super(Bukkit.getConsoleSender(), text, text);
+public class TeamChatCommand implements CommandExecutor {
+	private final StaffChatPlugin plugin;
+	
+	public TeamChatCommand(StaffChatPlugin plugin) {
+		this.plugin = plugin;
 	}
 	
 	@Override
-	public final ChatService getSource() {
-		return ChatService.MINECRAFT;
-	}
-	
-	@Override
-	public final ChatService getDestination() {
-		return ChatService.DISCORD;
-	}
-	
-	//
-	//  - - - HandlerList boilerplate - - -
-	//
-	
-	public static final HandlerList HANDLERS = new HandlerList();
-	
-	@Override
-	public HandlerList getHandlers() {
-		return HANDLERS;
-	}
-	
-	public static HandlerList getHandlerList() {
-		return HANDLERS;
+	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+		if (args.length <= 0) {
+			// Show usage to console (only players can enable auto chat)
+			if (!(sender instanceof Player)) {
+				return false;
+			}
+			plugin.data().getOrCreateProfile((Player) sender).toggleAutomaticTeamChat();
+		} else {
+			String message = String.join(" ", args);
+			
+			if (sender instanceof Player) {
+				plugin.submitTeamMessageFromPlayer((Player) sender, message);
+			} else if (sender instanceof ConsoleCommandSender) {
+				plugin.submitTeamMessageFromConsole(message);
+			} else {
+				sender.sendMessage("Unsupported command sender type: " + sender.getClass().getSimpleName());
+			}
+		}
+		
+		return true;
 	}
 }

@@ -58,10 +58,16 @@ public class StaffChatConfig extends YamlDataFile {
 	public static final DefaultYamlValue<Boolean> LEAVING_STAFFCHAT_ENABLED =
 		YamlValue.ofBoolean("staff-chat.toggles.let-staff-members-leave-staffchat").defaults(true);
 	
+	public static final DefaultYamlValue<Boolean> LEAVING_TEAMCHAT_ENABLED =
+		YamlValue.ofBoolean("team-chat.toggles.let-team-members-leave-teamchat").defaults(true);
+	
 	public static final DefaultYamlValue<Boolean> NOTIFY_IF_TOGGLE_ENABLED =
 		YamlValue.ofBoolean("staff-chat.toggles.notify-toggle-status-on-join")
 			.migrates(Migration.move("notify-staff-chat-enabled-on-join"))
 			.defaults(true);
+	
+	public static final DefaultYamlValue<Boolean> NOTIFY_IF_TEAM_TOGGLE_ENABLED =
+		YamlValue.ofBoolean("team-chat.toggles.notify-toggle-status-on-join").defaults(true);
 	
 	public static final DefaultYamlValue<Boolean> PREFIXED_CHAT_ENABLED =
 		YamlValue.ofBoolean("staff-chat.prefixed.enable-prefixed-chat-messages")
@@ -72,6 +78,12 @@ public class StaffChatConfig extends YamlDataFile {
 		YamlValue.ofString("staff-chat.prefixed.prefixed-chat-identifier")
 			.migrates(Migration.move("prefixed-chat-identifier"))
 			.defaults("@");
+	
+	public static final DefaultYamlValue<Boolean> PREFIXED_TEAM_CHAT_ENABLED =
+		YamlValue.ofBoolean("team-chat.prefixed.enable-prefixed-chat-messages").defaults(false);
+	
+	public static final DefaultYamlValue<String> PREFIXED_TEAM_CHAT_IDENTIFIER =
+		YamlValue.ofString("team-chat.prefixed.prefixed-chat-identifier").defaults("#");
 	
 	// Message Sound
 	
@@ -100,6 +112,34 @@ public class StaffChatConfig extends YamlDataFile {
 	
 	public static final DefaultYamlValue<Float> NOTIFICATION_SOUND_PITCH =
 		YamlValue.ofFloat("sounds.notifications.pitch").defaults(0.75F);
+	
+	// Team Chat Sound
+	
+	public static final DefaultYamlValue<Boolean> TEAM_MESSAGE_SOUND_ENABLED =
+		YamlValue.ofBoolean("sounds.team-messages.enabled").defaults(true);
+	
+	public static final DefaultYamlValue<Sound> TEAM_MESSAGE_SOUND_NAME =
+		YamlValue.ofSound("sounds.team-messages.name").defaults(Sound.ENTITY_EXPERIENCE_ORB_PICKUP);
+	
+	public static final DefaultYamlValue<Float> TEAM_MESSAGE_SOUND_VOLUME =
+		YamlValue.ofFloat("sounds.team-messages.volume").defaults(1.0F);
+	
+	public static final DefaultYamlValue<Float> TEAM_MESSAGE_SOUND_PITCH =
+		YamlValue.ofFloat("sounds.team-messages.pitch").defaults(0.6F);
+	
+	// Team Notification Sound
+	
+	public static final DefaultYamlValue<Boolean> TEAM_NOTIFICATION_SOUND_ENABLED =
+		YamlValue.ofBoolean("sounds.team-notifications.enabled").defaults(true);
+	
+	public static final DefaultYamlValue<Sound> TEAM_NOTIFICATION_SOUND_NAME =
+		YamlValue.ofSound("sounds.team-notifications.name").defaults(Sound.ENTITY_EXPERIENCE_ORB_PICKUP);
+	
+	public static final DefaultYamlValue<Float> TEAM_NOTIFICATION_SOUND_VOLUME =
+		YamlValue.ofFloat("sounds.team-notifications.volume").defaults(1.0F);
+	
+	public static final DefaultYamlValue<Float> TEAM_NOTIFICATION_SOUND_PITCH =
+		YamlValue.ofFloat("sounds.team-notifications.pitch").defaults(0.8F);
 	
 	@AggregatedResult
 	public static final List<YamlValue<?>> VALUES =
@@ -162,11 +202,44 @@ public class StaffChatConfig extends YamlDataFile {
 		}
 	}
 	
+	private void playTeamSound(
+		Player player,
+		DefaultYamlValue<Boolean> enabled,
+		DefaultYamlValue<Sound> sound,
+		DefaultYamlValue<Float> volume,
+		DefaultYamlValue<Float> pitch
+	) {
+		if (!getOrDefault(enabled)) {
+			return;
+		}
+		
+		boolean sounds = plugin.data().getProfile(player)
+			.map(StaffChatProfile::receivesTeamChatSounds)
+			.orElse(true);
+		
+		if (sounds) {
+			player.playSound(
+				player.getLocation().add(0, 0.5, 0),
+				getOrDefault(sound),
+				getOrDefault(volume),
+				getOrDefault(pitch)
+			);
+		}
+	}
+	
 	public void playMessageSound(Player player) {
 		playSound(player, MESSAGE_SOUND_ENABLED, MESSAGE_SOUND_NAME, MESSAGE_SOUND_VOLUME, MESSAGE_SOUND_PITCH);
 	}
 	
 	public void playNotificationSound(Player player) {
 		playSound(player, NOTIFICATION_SOUND_ENABLED, NOTIFICATION_SOUND_NAME, NOTIFICATION_SOUND_VOLUME, NOTIFICATION_SOUND_PITCH);
+	}
+	
+	public void playTeamMessageSound(Player player) {
+		playTeamSound(player, TEAM_MESSAGE_SOUND_ENABLED, TEAM_MESSAGE_SOUND_NAME, TEAM_MESSAGE_SOUND_VOLUME, TEAM_MESSAGE_SOUND_PITCH);
+	}
+	
+	public void playTeamNotificationSound(Player player) {
+		playTeamSound(player, TEAM_NOTIFICATION_SOUND_ENABLED, TEAM_NOTIFICATION_SOUND_NAME, TEAM_NOTIFICATION_SOUND_VOLUME, TEAM_NOTIFICATION_SOUND_PITCH);
 	}
 }

@@ -25,90 +25,58 @@ package com.rezzedup.discordsrv.staffchat.listeners;
 import com.rezzedup.discordsrv.staffchat.Permissions;
 import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
 import com.rezzedup.discordsrv.staffchat.config.StaffChatConfig;
-import com.rezzedup.discordsrv.staffchat.util.Strings;
-import community.leaf.eventful.bukkit.CancellationPolicy;
 import community.leaf.eventful.bukkit.ListenerOrder;
-import community.leaf.eventful.bukkit.annotations.CancelledEvents;
 import community.leaf.eventful.bukkit.annotations.EventListener;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
-@SuppressWarnings("unused")
 public class PlayerPrefixedMessageListener implements Listener {
-	private final StaffChatPlugin plugin;
-	
-	public PlayerPrefixedMessageListener(StaffChatPlugin plugin) {
-		this.plugin = plugin;
-	}
-	
-	@EventListener(ListenerOrder.EARLY)
-	@CancelledEvents(CancellationPolicy.REJECT)
-	public void onPrefixedChatEarly(AsyncPlayerChatEvent event) {
-		if (!plugin.config().getOrDefault(StaffChatConfig.PREFIXED_CHAT_ENABLED)) {
-			return;
-		}
-		
-		Player player = event.getPlayer();
-		if (Permissions.ACCESS.denies(player)) {
-			return;
-		}
-		
-		String identifier = plugin.config().getOrDefault(StaffChatConfig.PREFIXED_CHAT_IDENTIFIER);
-		if (Strings.isEmptyOrNull(identifier)) {
-			plugin.debug(getClass()).log(event, () -> "Early Listener: Prefixed chat is enabled but identifier is undefined");
-			return;
-		}
-		
-		String message = event.getMessage();
-		if (!message.startsWith(identifier)) {
-			return;
-		}
-		
-		plugin.debug(getClass()).log(event, () ->
-			"Early Listener: Detected prefixed chat from player(" + player.getName() + "): message(\"" + message + "\")"
-		);
-		
-		event.setCancelled(true); // Cancel this message from getting sent to global chat.
-		// Handle message in a later listener order, allowing other plugins to modify the message.
-	}
-	
-	@EventListener(ListenerOrder.MONITOR)
-	public void onPrefixedChatMonitor(AsyncPlayerChatEvent event) {
-		// Event should already be cancelled in the early listener.
-		if (!event.isCancelled()) {
-			return;
-		}
-		
-		if (!plugin.config().getOrDefault(StaffChatConfig.PREFIXED_CHAT_ENABLED)) {
-			return;
-		}
-		
-		Player player = event.getPlayer();
-		if (Permissions.ACCESS.denies(player)) {
-			return;
-		}
-		
-		String identifier = plugin.config().getOrDefault(StaffChatConfig.PREFIXED_CHAT_IDENTIFIER);
-		if (Strings.isEmptyOrNull(identifier)) {
-			plugin.debug(getClass()).log(event, () -> "Monitor Listener: Prefixed chat is enabled but identifier is undefined");
-			return;
-		}
-		
-		String message = event.getMessage();
-		if (!message.startsWith(identifier)) {
-			return;
-		}
-		
-		String unprefixed = message.substring(identifier.length()).trim();
-		String submission = (Strings.isEmptyOrNull(unprefixed)) ? message : unprefixed;
-		
-		plugin.debug(getClass()).log(event, () ->
-			"Monitor Listener: Sending prefixed chat from player(" + player.getName() + ") identified " +
-				"by prefix(\"" + identifier + "\"): message(\"" + submission + "\")"
-		);
-		
-		// Handle this on the main thread next tick.
-		plugin.sync().run(() -> plugin.submitMessageFromPlayer(player, submission));
-	}
+    private final StaffChatPlugin plugin;
+    
+    public PlayerPrefixedMessageListener(StaffChatPlugin plugin) {
+        this.plugin = plugin;
+    }
+    
+    @EventListener(ListenerOrder.EARLY)
+    public void onChatMessage(AsyncPlayerChatEvent event) {
+        Player sender = event.getPlayer();
+        String message = event.getMessage();
+        
+        // Staff chat messages
+        if (plugin.config().getOrDefault(StaffChatConfig.PREFIXED_CHAT_ENABLED)) {
+            String prefix = plugin.config().getOrDefault(StaffChatConfig.PREFIXED_CHAT_IDENTIFIER);
+            
+            if (message.startsWith(prefix) && Permissions.ACCESS.allows(sender)) {
+                String content = message.substring(prefix.length()).trim();
+                
+                plugin.debug(getClass()).log(event, () ->
+                    "Prefixed staff-chat message from " + sender.getName() + ": " + content
+                );
+                
+                event.setCancelled(true);
+                
+                // Handle this on the main thread next tick.
+                plugin.sync().run(() -> plugin.submitMessageFromPlayer(sender, content));
+            }
+        }
+        
+        // Team chat messages
+        if (plugin.config().getOrDefault(StaffChatConfig.PREFIXED_TEAM_CHAT_ENABLED)) {
+            String prefix = plugin.config().getOrDefault(StaffChatConfig.PREFIXED_TEAM_CHAT_IDENTIFIER);
+            
+            if (message.startsWith(prefix) && Permissions.TEAM_ACCESS.allows(sender)) {
+                String content = message.substring(prefix.length()).trim();
+                
+                plugin.debug(getClass()).log(event, () ->
+                    "Prefixed team-chat message from " + sender.getName() + ": " + content
+                );
+                
+                event.setCancelled(true);
+                
+                // Handle this on the main thread next tick.
+                plugin.sync().run(() -> plugin.submitTeamMessageFromPlayer(sender, content));
+            }
+        }
+    }
 }

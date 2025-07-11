@@ -39,7 +39,7 @@ public interface StaffChatData {
 	default Optional<StaffChatProfile> getProfile(Player player) {
 		// If they're a staff member, then they will always have a profile
 		// otherwise, return the possibly existing profile for non-staff
-		return (Permissions.ACCESS.allows(player))
+		return (Permissions.ACCESS.allows(player) || Permissions.TEAM_ACCESS.allows(player))
 			? Optional.of(getOrCreateProfile(player.getUniqueId()))
 			: getProfile(player.getUniqueId());
 	}
@@ -51,4 +51,14 @@ public interface StaffChatData {
 	default boolean isReceivingStaffChatMessages(Player player) {
 		return getProfile(player).filter(StaffChatProfile::receivesStaffChatMessages).isPresent();
 	}
+	
+	default boolean isAutomaticTeamChatEnabled(Player player) {
+		return getProfile(player).filter(StaffChatProfile::automaticTeamChat).isPresent();
+	}
+	
+	default boolean isReceivingTeamChatMessages(Player player) {
+		return getProfile(player).filter(StaffChatProfile::receivesTeamChatMessages).isPresent();
+	}
+	
+	void updateProfile(Player player);
 }

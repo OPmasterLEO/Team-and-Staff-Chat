@@ -27,7 +27,6 @@ import github.scarsz.discordsrv.dependencies.jda.api.entities.Message;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.User;
 import org.bukkit.event.HandlerList;
 
-@SuppressWarnings("unused")
 public class DiscordStaffChatMessageEvent extends StaffChatMessageEvent<User, Message> {
 	public DiscordStaffChatMessageEvent(User author, Message message, String text) {
 		super(author, message, text);

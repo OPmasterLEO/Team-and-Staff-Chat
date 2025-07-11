@@ -20,40 +20,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.rezzedup.discordsrv.staffchat.events;
+package com.rezzedup.discordsrv.staffchat.util;
 
-import com.rezzedup.discordsrv.staffchat.ChatService;
-import org.bukkit.Bukkit;
-import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.event.HandlerList;
+import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
+import github.scarsz.discordsrv.util.DiscordUtil;
+import org.bukkit.entity.Player;
 
-public class ConsoleStaffChatMessageEvent extends StaffChatMessageEvent<ConsoleCommandSender, String> {
-	public ConsoleStaffChatMessageEvent(String text) {
-		super(Bukkit.getConsoleSender(), text, text);
-	}
-	
-	@Override
-	public final ChatService getSource() {
-		return ChatService.MINECRAFT;
-	}
-	
-	@Override
-	public final ChatService getDestination() {
-		return ChatService.DISCORD;
-	}
-	
-	//
-	//  - - - HandlerList boilerplate - - -
-	//
-	
-	public static final HandlerList HANDLERS = new HandlerList();
-	
-	@Override
-	public HandlerList getHandlers() {
-		return HANDLERS;
-	}
-	
-	public static HandlerList getHandlerList() {
-		return HANDLERS;
-	}
+public class DiscordSrvHook {
+    public static void sendMessage(TextChannel channel, String message, Player author) {
+        if (channel == null) return;
+        
+        // Extract an integer value from the Player object (e.g., hashCode)
+        int authorId = author.hashCode();
+        
+        // Use DiscordUtil to send a formatted message to the Discord channel
+        DiscordUtil.sendMessage(channel, message, authorId);
+    }
 }

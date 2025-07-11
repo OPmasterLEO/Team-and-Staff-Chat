@@ -1,5 +1,4 @@
-
-   ${project.name} v${project.version} by RezzedUp
+${project.name} v${project.version} by RezzedUp
 
    ---
 
@@ -29,14 +28,31 @@
          However, it MUST be called "staff-chat" in the config.
          **This is very important!**
 
-   - 3) Run: `/discord reload` or restart the server
+   - 3) If you want to use team chat as well, add a "team-chat" channel to DiscordSRV's config
+        (in: /plugins/DiscordSRV/config.yml)
 
-   - 4) Give staff ranks permission to use the staff chat: `staffchat.access`
+     EXAMPLE:
+     EXAMPLE:    # Channel links from game to Discord
+     EXAMPLE:    # Replace the "00000000000" below with your team channel's ID
+     EXAMPLE:    Channels: {"global": "00000000000", "staff-chat": "00000000000", "team-chat": "00000000000"}
+     EXAMPLE:    #                                        ^              ^                 ^
+     EXAMPLE:    #                         All team chat messages will be sent to this channel.
+     EXAMPLE:
+
+     IMPORTANT NOTE:
+         The channel's name can be anything on Discord (since DiscordSRV uses its channel ID) ...
+         However, it MUST be called "team-chat" in the config.
+         **This is very important!**
+
+   - 4) Run: `/discord reload` or restart the server
+
+   - 5) Give staff ranks permission to use the staff chat: `staffchat.access`
+        Give team members permission to use the team chat: `teamchat.access`
 
    ---
 
-   This config can be reloaded in-game with: `/managestaffchat reload`
-   (Be sure to give yourself permission to manage the staff chat with: `staffchat.manage`)
+   This config can be reloaded in-game with: `/managestaffchat reload` or `/manageteamchat reload`
+   (Be sure to give yourself permission to manage the chats with: `staffchat.manage` and `teamchat.manage`)
 
    ---
 

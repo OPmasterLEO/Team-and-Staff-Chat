@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 
 import static com.rezzedup.discordsrv.staffchat.util.Strings.colorful;
 
-public class ManageStaffChatCommand implements CommandExecutor, TabCompleter {
+public class ManageTeamChatCommand implements CommandExecutor, TabCompleter {
 	private static final Set<String> RELOAD_ALIASES = Set.of("reload");
 	private static final Set<String> DEBUG_ALIASES = Set.of("debug");
 	private static final Set<String> HELP_ALIASES = Set.of("help", "usage", "?");
@@ -57,7 +57,7 @@ public class ManageStaffChatCommand implements CommandExecutor, TabCompleter {
 	
 	private final StaffChatPlugin plugin;
 	
-	public ManageStaffChatCommand(StaffChatPlugin plugin) {
+	public ManageTeamChatCommand(StaffChatPlugin plugin) {
 		this.plugin = plugin;
 	}
 	
@@ -73,7 +73,7 @@ public class ManageStaffChatCommand implements CommandExecutor, TabCompleter {
 			debug(sender);
 		} else {
 			sender.sendMessage(colorful(
-				"&9&lDiscordSRV-Staff-Chat&f: &7&oUnknown arguments: " + String.join(" ", args)
+				"&9&lDiscordSRV-Team-Chat&f: &7&oUnknown arguments: " + String.join(" ", args)
 			));
 		}
 		
@@ -103,13 +103,13 @@ public class ManageStaffChatCommand implements CommandExecutor, TabCompleter {
 	
 	private void usage(CommandSender sender, String label) {
 		sender.sendMessage(colorful(
-			"&9DiscordSRV-&lStaff&9-&lChat &fv" + plugin.getDescription().getVersion() + " Usage:"
+			"&9DiscordSRV-&lTeam&9-&lChat &fv" + plugin.getDescription().getVersion() + " Usage:"
 		));
 		
-		sender.sendMessage(colorful("&f- &7/staffchat &9Toggle automatic staff chat"));
-		sender.sendMessage(colorful("&f- &7/staffchat <message> &9Send a message to staff chat"));
-		sender.sendMessage(colorful("&f- &7/leavestaffchat &9Leave the staff chat"));
-		sender.sendMessage(colorful("&f- &7/joinstaffchat &9Rejoin the staff chat"));
+		sender.sendMessage(colorful("&f- &7/teamchat &9Toggle automatic team chat"));
+		sender.sendMessage(colorful("&f- &7/teamchat <message> &9Send a message to team chat"));
+		sender.sendMessage(colorful("&f- &7/leaveteamchat &9Leave the team chat"));
+		sender.sendMessage(colorful("&f- &7/jointeamchat &9Rejoin the team chat"));
 		sender.sendMessage(colorful("&f- &7/" + label.toLowerCase() + " reload &9Reload configs"));
 		sender.sendMessage(colorful("&f- &7/" + label.toLowerCase() + " debug &9Toggle debugging"));
 		
@@ -130,7 +130,7 @@ public class ManageStaffChatCommand implements CommandExecutor, TabCompleter {
 		plugin.data().reload();
 		plugin.updater().reload();
 		
-		sender.sendMessage(colorful("&9&lDiscordSRV-Staff-Chat&f: Reloaded."));
+		sender.sendMessage(colorful("&9&lDiscordSRV-Team-Chat&f: Reloaded."));
 	}
 	
 	private void debug(CommandSender sender) {
@@ -144,7 +144,7 @@ public class ManageStaffChatCommand implements CommandExecutor, TabCompleter {
 			if (sender instanceof Player) {
 				sender.sendMessage(colorful("&9[Debug]&o Sending a test message..."));
 				plugin.sync().delay(10).ticks().run(() ->
-					plugin.getServer().dispatchCommand(sender, "staffchat Hello! Just testing things...")
+					plugin.getServer().dispatchCommand(sender, "teamchat Hello! Just testing things...")
 				);
 			}
 		} else {

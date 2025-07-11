@@ -24,9 +24,13 @@ package com.rezzedup.discordsrv.staffchat;
 
 import com.github.zafarkhaja.semver.Version;
 import com.rezzedup.discordsrv.staffchat.commands.ManageStaffChatCommand;
+import com.rezzedup.discordsrv.staffchat.commands.ManageTeamChatCommand;
 import com.rezzedup.discordsrv.staffchat.commands.StaffChatCommand;
+import com.rezzedup.discordsrv.staffchat.commands.TeamChatCommand;
 import com.rezzedup.discordsrv.staffchat.commands.ToggleStaffChatCommand;
 import com.rezzedup.discordsrv.staffchat.commands.ToggleStaffChatSoundsCommand;
+import com.rezzedup.discordsrv.staffchat.commands.ToggleTeamChatCommand;
+import com.rezzedup.discordsrv.staffchat.commands.ToggleTeamChatSoundsCommand;
 import com.rezzedup.discordsrv.staffchat.config.MessagesConfig;
 import com.rezzedup.discordsrv.staffchat.config.StaffChatConfig;
 import com.rezzedup.discordsrv.staffchat.listeners.DiscordSrvLoadedLaterListener;
@@ -34,6 +38,7 @@ import com.rezzedup.discordsrv.staffchat.listeners.DiscordStaffChatListener;
 import com.rezzedup.discordsrv.staffchat.listeners.JoinNotificationListener;
 import com.rezzedup.discordsrv.staffchat.listeners.PlayerPrefixedMessageListener;
 import com.rezzedup.discordsrv.staffchat.listeners.PlayerStaffChatToggleListener;
+import com.rezzedup.discordsrv.staffchat.listeners.PlayerTeamChatToggleListener;
 import com.rezzedup.discordsrv.staffchat.util.FileIO;
 import community.leaf.configvalues.bukkit.YamlValue;
 import community.leaf.configvalues.bukkit.data.YamlDataFile;
@@ -62,6 +67,7 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 	public static final int BSTATS = 11056;
 	
 	public static final String CHANNEL = "staff-chat";
+	public static final String TEAM_CHANNEL = "team-chat";
 	
 	public static final String DISCORDSRV = "DiscordSRV";
 	
@@ -78,7 +84,9 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 	
 	@Override
 	public void onEnable() {
-		this.version = Version.valueOf(getDescription().getVersion());
+		@SuppressWarnings("deprecation")
+		Version v = Version.valueOf(getDescription().getVersion());
+		this.version = v;
 		
 		this.pluginDirectoryPath = getDataFolder().toPath();
 		this.backupsDirectoryPath = pluginDirectoryPath.resolve("backups");
@@ -100,15 +108,25 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 		events().register(new JoinNotificationListener(this));
 		events().register(new PlayerPrefixedMessageListener(this));
 		events().register(new PlayerStaffChatToggleListener(this));
+		events().register(new PlayerTeamChatToggleListener(this));
 		
-		
+		// Staff chat commands
 		command("staffchat", new StaffChatCommand(this));
 		command("managestaffchat", new ManageStaffChatCommand(this));
 		command("togglestaffchatsounds", new ToggleStaffChatSoundsCommand(this));
 		
-		ToggleStaffChatCommand toggle = new ToggleStaffChatCommand(this);
-		command("leavestaffchat", toggle);
-		command("joinstaffchat", toggle);
+		ToggleStaffChatCommand staffToggle = new ToggleStaffChatCommand(this);
+		command("leavestaffchat", staffToggle);
+		command("joinstaffchat", staffToggle);
+		
+		// Team chat commands
+		command("teamchat", new TeamChatCommand(this));
+		command("manageteamchat", new ManageTeamChatCommand(this));
+		command("toggleteamchatsounds", new ToggleTeamChatSoundsCommand(this));
+		
+		ToggleTeamChatCommand teamToggle = new ToggleTeamChatCommand(this);
+		command("leaveteamchat", teamToggle);
+		command("jointeamchat", teamToggle);
 		
 		@NullOr Plugin discordSrv = getServer().getPluginManager().getPlugin(DISCORDSRV);
 		
@@ -119,7 +137,7 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 			debug(getClass()).log("Enable", () -> "DiscordSRV is not enabled: continuing without discord support");
 			
 			getLogger().warning("DiscordSRV is not currently enabled (messages will NOT be sent to Discord).");
-			getLogger().warning("Staff chat messages will still work in-game, however.");
+			getLogger().warning("Staff chat and team chat messages will still work in-game, however.");
 			
 			// Subscribe to DiscordSRV later because it somehow hasn't enabled yet.
 			events().register(new DiscordSrvLoadedLaterListener(this));
@@ -132,6 +150,11 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 		onlineStaffChatParticipants()
 			.filter(data()::isAutomaticStaffChatEnabled)
 			.forEach(messages()::notifyAutoChatEnabled);
+			
+		// Same for team chat users
+		onlineTeamChatParticipants()
+			.filter(data()::isAutomaticTeamChatEnabled)
+			.forEach(messages()::notifyAutoTeamChatEnabled);
 	}
 	
 	@Override
@@ -146,6 +169,11 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 		onlineStaffChatParticipants()
 			.filter(data()::isAutomaticStaffChatEnabled)
 			.forEach(messages()::notifyAutoChatDisabled);
+			
+		// Same for team chat users
+		onlineTeamChatParticipants()
+			.filter(data()::isAutomaticTeamChatEnabled)
+			.forEach(messages()::notifyAutoTeamChatDisabled);
 		
 		if (isDiscordSrvHookEnabled()) {
 			debug(getClass()).log("Disable", () -> "Unsubscribing from DiscordSRV API (hook is enabled)");
@@ -238,6 +266,13 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 			: null;
 	}
 	
+	@Override
+	public @NullOr TextChannel getTeamDiscordChannelOrNull() {
+		return (isDiscordSrvHookEnabled())
+			? DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName(TEAM_CHANNEL)
+			: null;
+	}
+	
 	private MessageProcessor processor() {
 		return initialized(processor);
 	}
@@ -255,6 +290,21 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 	@Override
 	public void submitMessageFromDiscord(User author, Message message) {
 		processor().processDiscordChat(author, message);
+	}
+	
+	@Override
+	public void submitTeamMessageFromConsole(String message) {
+		processor().processConsoleTeamChat(message);
+	}
+	
+	@Override
+	public void submitTeamMessageFromPlayer(Player author, String message) {
+		processor().processPlayerTeamChat(author, message);
+	}
+	
+	@Override
+	public void submitTeamMessageFromDiscord(User author, Message message) {
+		processor().processDiscordTeamChat(author, message);
 	}
 	
 	//
@@ -342,6 +392,10 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 			
 			metrics.addCustomChart(new SimplePie(
 				"has_valid_staff-chat_channel", () -> String.valueOf(getDiscordChannelOrNull() != null)
+			));
+			
+			metrics.addCustomChart(new SimplePie(
+				"has_valid_team-chat_channel", () -> String.valueOf(getTeamDiscordChannelOrNull() != null)
 			));
 			
 			debug(getClass()).log("Metrics", () -> "Started bStats metrics");

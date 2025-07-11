@@ -74,7 +74,9 @@ public class Updater {
 	}
 	
 	public Optional<Version> latestUpdateVersion() {
-		return latestAvailableVersion().filter(plugin.version()::lessThan);
+		@SuppressWarnings("deprecation")
+		Optional<Version> version = latestAvailableVersion().filter(plugin.version()::lessThan);
+		return version;
 	}
 	
 	public boolean isOutdated() {
@@ -123,8 +125,11 @@ public class Updater {
 				return;
 			}
 			
+			@SuppressWarnings({"deprecation"})
 			JsonObject json = new JsonParser().parse(response.body()).getAsJsonObject();
-			this.latestAvailableVersion = Version.valueOf(json.get("name").getAsString());
+			@SuppressWarnings("deprecation")
+			Version version = Version.valueOf(json.get("name").getAsString());
+			this.latestAvailableVersion = version;
 			
 			plugin.debug(getClass()).log("Update Check: Success", () ->
 				"Found latest available version: " + latestAvailableVersion + " (current: " + plugin.version() + ")"

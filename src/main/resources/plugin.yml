@@ -18,10 +18,22 @@ commands:
     usage: |-
       /<command> - toggle automatic staff chat
       /<command> <message> - send a message to the staff chat
+  teamchat:
+    aliases: [ tchat, tc, t ]
+    description: Toggle or send a message to team chat.
+    permission: teamchat.access
+    usage: |-
+      /<command> - toggle automatic team chat
+      /<command> <message> - send a message to the team chat
   managestaffchat:
     aliases: [ discordsrv-staff-chat, discordsrvstaffchat, discordstaffchat, discordadminchat, manageadminchat ]
     description: Manage and get information about DiscordSRV-Staff-Chat
     permission: staffchat.manage
+    usage: /<command>
+  manageteamchat:
+    aliases: [ discordsrv-team-chat, discordsrvteamchat, discordteamchat ]
+    description: Manage and get information about team chat
+    permission: teamchat.manage
     usage: /<command>
   leavestaffchat:
     aliases: [ leaveadminchat ]
@@ -33,10 +45,25 @@ commands:
     description: Rejoin the staff chat (receive messages again).
     permission: staffchat.access
     usage: /<command>
+  leaveteamchat:
+    aliases: [ leavetc ]
+    description: Leave the team chat (stop receiving messages).
+    permission: teamchat.access
+    usage: /<command>
+  jointeamchat:
+    aliases: [ jointc ]
+    description: Rejoin the team chat (receive messages again).
+    permission: teamchat.access
+    usage: /<command>
   togglestaffchatsounds:
     aliases: [ toggleadminchatsounds ]
     description: Mute or unmute staff chat sounds for yourself.
     permission: staffchat.access
+    usage: /<command>
+  toggleteamchatsounds:
+    aliases: [ toggletcsounds ]
+    description: Mute or unmute team chat sounds for yourself.
+    permission: teamchat.access
     usage: /<command>
 
 permissions:
@@ -47,4 +74,12 @@ permissions:
   staffchat.manage:
     description: Manage the staff chat plugin in-game (e.g. reloading)
   staffchat.access:
-    descriptions: Send and receive messages via staff chat
+    description: Send and receive messages via staff chat
+  teamchat.*:
+    children:
+      teamchat.manage: true
+      teamchat.access: true
+  teamchat.manage:
+    description: Manage the team chat plugin in-game (e.g. reloading)
+  teamchat.access:
+    description: Send and receive messages via team chat

@@ -22,24 +22,20 @@
  */
 package com.rezzedup.discordsrv.staffchat.events;
 
-import com.rezzedup.discordsrv.staffchat.ChatService;
-import org.bukkit.Bukkit;
-import org.bukkit.command.ConsoleCommandSender;
+import com.rezzedup.discordsrv.staffchat.StaffChatProfile;
 import org.bukkit.event.HandlerList;
 
-public class ConsoleStaffChatMessageEvent extends StaffChatMessageEvent<ConsoleCommandSender, String> {
-	public ConsoleStaffChatMessageEvent(String text) {
-		super(Bukkit.getConsoleSender(), text, text);
+public class ReceivingTeamChatToggleEvent extends ProfileToggleEvent {
+	public ReceivingTeamChatToggleEvent(StaffChatProfile profile, boolean toggleState) {
+		super(profile, toggleState);
 	}
 	
-	@Override
-	public final ChatService getSource() {
-		return ChatService.MINECRAFT;
+	public boolean isJoiningTeamChat() {
+		return getToggleState();
 	}
 	
-	@Override
-	public final ChatService getDestination() {
-		return ChatService.DISCORD;
+	public boolean isLeavingTeamChat() {
+		return !isJoiningTeamChat();
 	}
 	
 	//

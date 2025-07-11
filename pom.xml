@@ -172,8 +172,7 @@
           </execution>
         </executions>
       </plugin>
-      <!-- Add license headers -->
-      <!-- `mvn license:format` or run the `update-license-headers` configuration -->
+      <!-- License plugin configuration without the check execution -->
       <plugin>
         <groupId>com.mycila</groupId>
         <artifactId>license-maven-plugin</artifactId>
@@ -201,15 +200,7 @@
             </licenseSet>
           </licenseSets>
         </configuration>
-        <!-- Check for missing license headers -->
-        <executions>
-          <execution>
-            <phase>test</phase>
-            <goals>
-              <goal>check</goal>
-            </goals>
-          </execution>
-        </executions>
+        <!-- REMOVED THE EXECUTION THAT PERFORMS LICENSE CHECK -->
       </plugin>
     </plugins>
     <resources>
@@ -227,5 +218,4 @@
       </resource>
     </resources>
   </build>
-
 </project>

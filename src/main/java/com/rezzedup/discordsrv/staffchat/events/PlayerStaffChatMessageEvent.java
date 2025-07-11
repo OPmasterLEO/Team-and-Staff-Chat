@@ -26,7 +26,6 @@ import com.rezzedup.discordsrv.staffchat.ChatService;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 
-@SuppressWarnings("unused")
 public class PlayerStaffChatMessageEvent extends StaffChatMessageEvent<Player, String> {
 	public PlayerStaffChatMessageEvent(Player author, String text) {
 		super(author, text, text);

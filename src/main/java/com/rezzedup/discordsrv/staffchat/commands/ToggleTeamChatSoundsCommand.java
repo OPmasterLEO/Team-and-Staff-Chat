@@ -20,40 +20,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.rezzedup.discordsrv.staffchat.events;
+package com.rezzedup.discordsrv.staffchat.commands;
 
-import com.rezzedup.discordsrv.staffchat.ChatService;
-import org.bukkit.Bukkit;
-import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.event.HandlerList;
+import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
+import com.rezzedup.discordsrv.staffchat.StaffChatProfile;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
-public class ConsoleStaffChatMessageEvent extends StaffChatMessageEvent<ConsoleCommandSender, String> {
-	public ConsoleStaffChatMessageEvent(String text) {
-		super(Bukkit.getConsoleSender(), text, text);
+public class ToggleTeamChatSoundsCommand implements CommandExecutor {
+	private final StaffChatPlugin plugin;
+	
+	public ToggleTeamChatSoundsCommand(StaffChatPlugin plugin) {
+		this.plugin = plugin;
 	}
 	
 	@Override
-	public final ChatService getSource() {
-		return ChatService.MINECRAFT;
-	}
-	
-	@Override
-	public final ChatService getDestination() {
-		return ChatService.DISCORD;
-	}
-	
-	//
-	//  - - - HandlerList boilerplate - - -
-	//
-	
-	public static final HandlerList HANDLERS = new HandlerList();
-	
-	@Override
-	public HandlerList getHandlers() {
-		return HANDLERS;
-	}
-	
-	public static HandlerList getHandlerList() {
-		return HANDLERS;
+	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+		if (sender instanceof Player) {
+			StaffChatProfile profile = plugin.data().getOrCreateProfile((Player) sender);
+			boolean unmuting = !profile.receivesTeamChatSounds();
+			
+			profile.receivesTeamChatSounds(unmuting);
+			
+			if (unmuting) {
+				plugin.messages().notifyTeamSoundsUnmuted((Player) sender);
+			} else {
+				plugin.messages().notifyTeamSoundsMuted((Player) sender);
+			}
+		} else {
+			sender.sendMessage("Only players may run this command.");
+		}
+		
+		return true;
 	}
 }

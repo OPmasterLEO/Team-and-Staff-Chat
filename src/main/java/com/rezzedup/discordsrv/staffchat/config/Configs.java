@@ -35,13 +35,16 @@ public class Configs {
 		throw new UnsupportedOperationException();
 	}
 	
+	@SuppressWarnings("deprecation")
 	public static final Version NO_VERSION = Version.forIntegers(0, 0, 0);
 	
 	public static YamlAccessor<Version> VERSION =
 		YamlAccessor.of(Adapter.of(
 			object -> {
 				try {
-					return Optional.of(Version.valueOf(String.valueOf(object)));
+					@SuppressWarnings("deprecation")
+					Version version = Version.valueOf(String.valueOf(object));
+					return Optional.of(version);
 				} catch (RuntimeException e) {
 					return Optional.empty();
 				}
