@@ -22,6 +22,7 @@
  */
 package com.rezzedup.discordsrv.staffchat;
 
+import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import com.rezzedup.discordsrv.staffchat.config.StaffChatConfig;
 import com.rezzedup.discordsrv.staffchat.events.AutoStaffChatToggleEvent;
 import com.rezzedup.discordsrv.staffchat.events.AutoTeamChatToggleEvent;
@@ -30,10 +31,8 @@ import com.rezzedup.discordsrv.staffchat.events.ReceivingTeamChatToggleEvent;
 import community.leaf.configvalues.bukkit.YamlValue;
 import community.leaf.configvalues.bukkit.data.YamlDataFile;
 import community.leaf.configvalues.bukkit.util.Sections;
-import community.leaf.tasks.TaskContext;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
 import pl.tlinkowski.annotation.basic.NullOr;
 
 import java.time.Instant;
@@ -49,7 +48,7 @@ public class Data extends YamlDataFile implements StaffChatData {
 	
 	private final StaffChatPlugin plugin;
 	
-	private @NullOr TaskContext<BukkitTask> task = null;
+	private @NullOr MyScheduledTask task = null;
 	
 	Data(StaffChatPlugin plugin) {
 		super(plugin.directory().resolve("data"), "staff-chat.data.yml");
@@ -68,20 +67,22 @@ public class Data extends YamlDataFile implements StaffChatData {
 			});
 		}
 		
-		// Start the save task.
-		task = plugin.async().every(2).minutes().run(() -> {
+		// Start the save task (run sync every 2 minutes; async repeating caused UnsupportedOperationException on this server).
+		long periodTicks = 2L * 60L * 20L;
+		task = StaffChatPlugin.getScheduler().runTaskTimer(() -> {
 			if (isUpdated()) {
 				save();
 			}
-		});
+		}, periodTicks, periodTicks);
+
 		
 		// Update profiles of all online players when reloaded.
 		reloadsWith(() -> plugin.getServer().getOnlinePlayers().forEach(this::updateProfile));
 	}
 	
 	protected void end() {
-		if (task != null) {
-			task.cancel();
+		if (task != null && !task.isCancelled()) {
+			try { task.cancel(); } catch (Throwable ignored) {}
 		}
 		if (isUpdated()) {
 			save();
@@ -305,7 +306,7 @@ public class Data extends YamlDataFile implements StaffChatData {
 		@Override
 		public void receivesTeamChatSounds(boolean enabled) {
 			teamMutedSounds = !enabled;
-			updateStoredProfileData();
+		 updateStoredProfileData();
 		}
 		
 		boolean hasDefaultSettings() {

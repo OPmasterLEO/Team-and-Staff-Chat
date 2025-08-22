@@ -102,8 +102,9 @@ public class ManageTeamChatCommand implements CommandExecutor, TabCompleter {
 	}
 	
 	private void usage(CommandSender sender, String label) {
+		String version = plugin.getVersion(); // Replace deprecated getDescription().getVersion()
 		sender.sendMessage(colorful(
-			"&9DiscordSRV-&lTeam&9-&lChat &fv" + plugin.getDescription().getVersion() + " Usage:"
+			"&9DiscordSRV-&lTeam&9-&lChat &fv" + version + " Usage:"
 		));
 		
 		sender.sendMessage(colorful("&f- &7/teamchat &9Toggle automatic team chat"));
@@ -143,8 +144,9 @@ public class ManageTeamChatCommand implements CommandExecutor, TabCompleter {
 			
 			if (sender instanceof Player) {
 				sender.sendMessage(colorful("&9[Debug]&o Sending a test message..."));
-				plugin.sync().delay(10).ticks().run(() ->
-					plugin.getServer().dispatchCommand(sender, "teamchat Hello! Just testing things...")
+				StaffChatPlugin.getScheduler().runTaskLater(() ->
+					plugin.getServer().dispatchCommand(sender, "teamchat Hello! Just testing things..."),
+					10L
 				);
 			}
 		} else {

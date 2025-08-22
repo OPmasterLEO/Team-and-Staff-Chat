@@ -82,7 +82,7 @@ public class MessageProcessor {
 			// Update format's PAPI placeholders before inserting the message
 			// (which *could* contain arbitrary placeholders itself, ah placeholder injection).
 			@NullOr Player player = (author instanceof Player) ? (Player) author : null;
-			formatted = PlaceholderAPI.setPlaceholders(player, formatted);
+			formatted = parsePlaceholders(player, formatted);
 		}
 		
 		String content = Strings.colorful(placeholders.update(formatted));
@@ -267,7 +267,7 @@ public class MessageProcessor {
 		if (plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
 			// Update format's PAPI placeholders before inserting the message
 			@NullOr Player player = (author instanceof Player) ? (Player) author : null;
-			formatted = PlaceholderAPI.setPlaceholders(player, formatted);
+			formatted = parsePlaceholders(player, formatted);
 		}
 		
 		String content = Strings.colorful(placeholders.update(formatted));

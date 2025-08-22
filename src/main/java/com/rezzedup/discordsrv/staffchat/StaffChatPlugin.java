@@ -22,6 +22,9 @@
  */
 package com.rezzedup.discordsrv.staffchat;
 
+import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
+import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
+import com.github.Anon8281.universalScheduler.UniversalScheduler;
 import com.github.zafarkhaja.semver.Version;
 import com.rezzedup.discordsrv.staffchat.commands.ManageStaffChatCommand;
 import com.rezzedup.discordsrv.staffchat.commands.ManageTeamChatCommand;
@@ -43,7 +46,6 @@ import com.rezzedup.discordsrv.staffchat.util.FileIO;
 import community.leaf.configvalues.bukkit.YamlValue;
 import community.leaf.configvalues.bukkit.data.YamlDataFile;
 import community.leaf.eventful.bukkit.BukkitEventSource;
-import community.leaf.tasks.bukkit.BukkitTaskSource;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.Message;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
@@ -61,8 +63,9 @@ import pl.tlinkowski.annotation.basic.NullOr;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Consumer;
 
-public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, BukkitEventSource, StaffChatAPI {
+public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, StaffChatAPI {
 	// https://bstats.org/plugin/bukkit/DiscordSRV-Staff-Chat/11056
 	public static final int BSTATS = 11056;
 	
@@ -81,12 +84,18 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 	private @NullOr Updater updater;
 	private @NullOr MessageProcessor processor;
 	private @NullOr DiscordStaffChatListener discordSrvHook;
+
+	private String serverType;
+	
+	private static TaskScheduler scheduler;
 	
 	@Override
 	public void onEnable() {
 		@SuppressWarnings("deprecation")
 		Version v = Version.valueOf(getDescription().getVersion());
 		this.version = v;
+		// Determine server type early (simple heuristic since PlatformDetector removed)
+		serverType = getServer().getVersion().toLowerCase().contains("folia") ? "Folia" : "Bukkit";
 		
 		this.pluginDirectoryPath = getDataFolder().toPath();
 		this.backupsDirectoryPath = pluginDirectoryPath.resolve("backups");
@@ -95,6 +104,10 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 		
 		debug(getClass()).header(() -> "Starting Plugin: " + this);
 		debugger().schedulePluginStatus(getClass(), "Enable");
+		
+		// Initialize UniversalScheduler first so we can use it for scheduling
+		scheduler = UniversalScheduler.getScheduler(this);
+		getLogger().info("Running on " + serverType + " server. Configuring for compatibility.");
 		
 		this.config = new StaffChatConfig(this);
 		this.messages = new MessagesConfig(this);
@@ -112,7 +125,8 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 		
 		// Staff chat commands
 		command("staffchat", new StaffChatCommand(this));
-		command("managestaffchat", new ManageStaffChatCommand(this));
+		// Replace deprecated direct call when registering manage command
+		command("managestaffchat", new ManageStaffChatCommand(this, v.toString()));
 		command("togglestaffchatsounds", new ToggleStaffChatSoundsCommand(this));
 		
 		ToggleStaffChatCommand staffToggle = new ToggleStaffChatCommand(this);
@@ -372,33 +386,259 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitTaskSource, Buk
 			debug(getClass()).log("Command: Setup", () -> "Registered tab completer for: /" + name);
 		}
 	}
-	
+
+	/* ------------------------------------------------------------------
+	 *  bStats metrics
+	 * ------------------------------------------------------------------ */
+
 	private void startMetrics() {
 		if (!config().getOrDefault(StaffChatConfig.METRICS_ENABLED)) {
 			debug(getClass()).log("Metrics", () -> "Aborting: metrics are disabled in the config");
 			return;
 		}
-		
+
 		debug(getClass()).log("Metrics", () -> "Scheduling metrics to start one minute from now");
-		
+
 		// Start a minute later to get the most accurate data.
-		sync().delay(1).minutes().run(() ->
-		{
+		getScheduler().runTaskLater(() -> {
 			Metrics metrics = new Metrics(this, BSTATS);
-			
+
 			metrics.addCustomChart(new SimplePie(
-				"hooked_into_discordsrv", () -> String.valueOf(isDiscordSrvHookEnabled())
-			));
-			
+					"hooked_into_discordsrv",
+					() -> String.valueOf(isDiscordSrvHookEnabled())));
+
 			metrics.addCustomChart(new SimplePie(
-				"has_valid_staff-chat_channel", () -> String.valueOf(getDiscordChannelOrNull() != null)
-			));
-			
+					"has_valid_staff-chat_channel",
+					() -> String.valueOf(getDiscordChannelOrNull() != null)));
+
 			metrics.addCustomChart(new SimplePie(
-				"has_valid_team-chat_channel", () -> String.valueOf(getTeamDiscordChannelOrNull() != null)
-			));
-			
+					"has_valid_team-chat_channel",
+					() -> String.valueOf(getTeamDiscordChannelOrNull() != null)));
+
 			debug(getClass()).log("Metrics", () -> "Started bStats metrics");
-		});
+		}, 1200L); // 1 minute = 1200 ticks
+	}
+	
+	/**
+	 * Gets the UniversalScheduler task scheduler
+	 * @return The task scheduler
+	 */
+	public static TaskScheduler getScheduler() {
+		return scheduler;
+	}
+	
+	/* ------------------------------------------------------------------
+	 *  TaskSource helpers for compatibility with existing code
+	 * ------------------------------------------------------------------ */
+	
+	/**
+	 * Creates a task builder for synchronous tasks using UniversalScheduler
+	 * @return TaskBuilder instance
+	 */
+	public TaskBuilder sync() {
+		return new TaskBuilder(false);
+	}
+	
+	/**
+	 * Creates a task builder for asynchronous tasks using UniversalScheduler
+	 * @return TaskBuilder instance
+	 */
+	public TaskBuilder async() {
+		return new TaskBuilder(true);
+	}
+	
+	/**
+	 * Task builder class that mimics the original API but uses UniversalScheduler
+	 */
+	public class TaskBuilder {
+		private final boolean async;
+		private long delayTicks = 0L;
+		private long periodTicks = 0L;
+		
+		public TaskBuilder(boolean async) {
+			this.async = async;
+		}
+		
+		/**
+		 * Set a delay before task execution
+		 * @param value Amount of time units
+		 * @return This builder instance
+		 */
+		public TaskBuilder delay(long value) {
+			this.delayTicks = value;
+			return this;
+		}
+		
+		/**
+		 * Set time unit to ticks (default)
+		 * @return This builder instance
+		 */
+		public TaskBuilder ticks() {
+			// Default unit is ticks, no conversion needed
+			return this;
+		}
+		
+		/**
+		 * Set time unit to seconds (convert to ticks)
+		 * @return This builder instance
+		 */
+		public TaskBuilder seconds() {
+			delayTicks *= 20L;
+			periodTicks *= 20L;
+			return this;
+		}
+		
+		/**
+		 * Set time unit to minutes (convert to ticks)
+		 * @return This builder instance
+		 */
+		public TaskBuilder minutes() {
+			delayTicks *= 20L * 60L;
+			periodTicks *= 20L * 60L;
+			return this;
+		}
+		
+		/**
+		 * Set time unit to hours (convert to ticks)
+		 * @return This builder instance
+		 */
+		public TaskBuilder hours() {
+			delayTicks *= 20L * 60L * 60L;
+			periodTicks *= 20L * 60L * 60L;
+			return this;
+		}
+		
+		/**
+		 * Set task to repeat at regular intervals
+		 * @param value Interval time
+		 * @return This builder instance
+		 */
+		public TaskBuilder every(long value) {
+			this.periodTicks = value;
+			return this;
+		}
+		
+		/**
+		 * Run the task with the configured parameters
+		 * @param runnable Task to run
+		 */
+		public void run(Runnable runnable) {
+			if (async) {
+				// Handle asynchronous tasks
+				if (delayTicks > 0) {
+					if (periodTicks > 0) {
+						// Delayed repeating async task
+						scheduler.runTaskTimerAsynchronously(runnable, delayTicks, periodTicks);
+					} else {
+						// Delayed async task
+						scheduler.runTaskLaterAsynchronously(runnable, delayTicks);
+					}
+				} else {
+					if (periodTicks > 0) {
+						// Immediate repeating async task
+						scheduler.runTaskTimerAsynchronously(runnable, 0, periodTicks);
+					} else {
+						// Immediate async task
+						scheduler.runTaskAsynchronously(runnable);
+					}
+				}
+			} else {
+				// Handle synchronous tasks
+				if (delayTicks > 0) {
+					if (periodTicks > 0) {
+						// Delayed repeating sync task
+						scheduler.runTaskTimer(runnable, delayTicks, periodTicks);
+					} else {
+						// Delayed sync task
+						scheduler.runTaskLater(runnable, delayTicks);
+					}
+				} else {
+					if (periodTicks > 0) {
+						// Immediate repeating sync task
+						scheduler.runTaskTimer(runnable, 0, periodTicks);
+					} else {
+						// Immediate sync task
+						scheduler.runTask(runnable);
+					}
+				}
+			}
+		}
+		
+		/**
+		 * Run the task with the configured parameters and provide access to the task object
+		 * @param consumer Consumer that receives the scheduled task
+		 */
+		public void run(Consumer<MyScheduledTask> consumer) {
+			MyScheduledTask task;
+			
+			if (async) {
+				// Handle asynchronous tasks
+				if (delayTicks > 0) {
+					if (periodTicks > 0) {
+						// Delayed repeating async task
+						task = scheduler.runTaskTimerAsynchronously(() -> {
+							consumer.accept(null); // Can't pass the task to itself in constructor
+						}, delayTicks, periodTicks);
+					} else {
+						// Delayed async task
+						task = scheduler.runTaskLaterAsynchronously(() -> {
+							consumer.accept(null);
+						}, delayTicks);
+					}
+				} else {
+					if (periodTicks > 0) {
+						// Immediate repeating async task
+						task = scheduler.runTaskTimerAsynchronously(() -> {
+							consumer.accept(null);
+						}, 0, periodTicks);
+					} else {
+						// Immediate async task
+						task = scheduler.runTaskAsynchronously(() -> {
+							consumer.accept(null);
+						});
+					}
+				}
+			} else {
+				// Handle synchronous tasks
+				if (delayTicks > 0) {
+					if (periodTicks > 0) {
+						// Delayed repeating sync task
+						task = scheduler.runTaskTimer(() -> {
+							consumer.accept(null);
+						}, delayTicks, periodTicks);
+					} else {
+						// Delayed sync task
+						task = scheduler.runTaskLater(() -> {
+							consumer.accept(null);
+						}, delayTicks);
+					}
+				} else {
+					if (periodTicks > 0) {
+						// Immediate repeating sync task
+						task = scheduler.runTaskTimer(() -> {
+							consumer.accept(null);
+						}, 0, periodTicks);
+					} else {
+						// Immediate sync task
+						task = scheduler.runTask(() -> {
+							consumer.accept(null);
+						});
+					}
+				}
+			}
+			
+			// Run once more with the actual task
+			consumer.accept(task);
+		}
+
+		public TaskBuilder submit(Runnable runnable) { // compatibility alias
+			run(runnable);
+			return this;
+		}
+	}
+
+	// Avoid deprecated getDescription() here
+	public String getVersion() {
+		return (version != null) ? version.toString() : "unknown";
 	}
 }

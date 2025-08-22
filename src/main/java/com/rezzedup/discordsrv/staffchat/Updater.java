@@ -26,14 +26,12 @@ import com.github.zafarkhaja.semver.Version;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.rezzedup.discordsrv.staffchat.config.StaffChatConfig;
-import community.leaf.tasks.TaskContext;
+import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
 import pl.tlinkowski.annotation.basic.NullOr;
-
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -49,7 +47,7 @@ public class Updater {
 	private final HttpClient client;
 	private final String userAgent;
 	
-	private @NullOr TaskContext<BukkitTask> task;
+	private @NullOr MyScheduledTask updateTask;
 	private @NullOr Version latestAvailableVersion;
 	
 	Updater(StaffChatPlugin plugin) {
@@ -66,7 +64,7 @@ public class Updater {
 	}
 	
 	public boolean isRunningUpdateCheckTask() {
-		return task != null;
+		return updateTask != null && !updateTask.isCancelled();
 	}
 	
 	public Optional<Version> latestAvailableVersion() {
@@ -84,25 +82,27 @@ public class Updater {
 	}
 	
 	public void end() {
-		if (task != null) {
-			task.cancel();
+		if (updateTask != null) {
+			try { updateTask.cancel(); } catch (Throwable ignored) {}
 		}
 	}
 	
 	public void reload() {
 		if (plugin.config().getOrDefault(StaffChatConfig.UPDATE_CHECKER_ENABLED)) {
-			if (task == null || task.isCancelled()) {
+			if (updateTask == null || updateTask.isCancelled()) {
 				plugin.debug(getClass()).log("Reload", () -> "Update checker enabled: starting task");
-				this.task = plugin.async().delay(10).ticks().every(7).hours().run(this::checkForUpdates);
+				long delay = 10L;
+				long period = 7L * 60L * 60L * 20L;
+				updateTask = StaffChatPlugin.getScheduler()
+					.runTaskTimerAsynchronously(this::checkForUpdates, delay, period);
 			} else {
 				plugin.debug(getClass()).log("Reload", () -> "Update checker enabled: task already running");
 			}
 		} else {
 			latestAvailableVersion = null;
-			
-			if (task != null) {
+			if (updateTask != null && !updateTask.isCancelled()) {
 				plugin.debug(getClass()).log("Reload", () -> "Update checker disabled: ending previously-enabled task");
-				task.cancel();
+				try { updateTask.cancel(); } catch (Throwable ignored) {}
 			} else {
 				plugin.debug(getClass()).log("Reload", () -> "Update checker disabled: will not start task");
 			}
@@ -135,7 +135,9 @@ public class Updater {
 				"Found latest available version: " + latestAvailableVersion + " (current: " + plugin.version() + ")"
 			);
 			
-			plugin.sync().run(() -> notifyIfUpdateAvailable(plugin.getServer().getConsoleSender()));
+			plugin.getServer().getScheduler().runTask(plugin, () ->
+				notifyIfUpdateAvailable(plugin.getServer().getConsoleSender())
+			);
 		} catch (Exception e) {
 			plugin.debug(getClass()).logException("Update Check: Failure", e);
 		}

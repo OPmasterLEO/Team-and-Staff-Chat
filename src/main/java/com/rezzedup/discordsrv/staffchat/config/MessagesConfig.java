@@ -150,6 +150,10 @@ public class MessagesConfig extends YamlDataFile {
         YamlValue.ofString("notifications.join.others")
             .defaults("%prefix% &2→&a %player% &njoined&a the staff chat");
     
+    public static final DefaultYamlValue<String> JOIN_CHAT_NOTIFICATION_REMINDER =
+        YamlValue.ofString("notifications.join.reminder")
+            .defaults("&8&o(Reminder: you joined the staff chat)");
+    
     // Team Chat Leave/Join Messages
     public static final DefaultYamlValue<String> LEFT_TEAM_CHAT_NOTIFICATION_SELF =
         YamlValue.ofString("notifications.team-leave.self")
@@ -284,7 +288,7 @@ public class MessagesConfig extends YamlDataFile {
         MappedPlaceholder placeholders = placeholders();
         
         placeholders.map("user", "name", "username", "player", "sender").to(player::getName);
-        placeholders.map("nickname", "displayname").to(player::getDisplayName);
+        placeholders.map("nickname", "displayname").to(() -> player.getName());
         
         return placeholders;
     }

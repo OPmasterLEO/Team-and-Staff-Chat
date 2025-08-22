@@ -56,9 +56,11 @@ public class ManageStaffChatCommand implements CommandExecutor, TabCompleter {
 			.toSet();
 	
 	private final StaffChatPlugin plugin;
-	
-	public ManageStaffChatCommand(StaffChatPlugin plugin) {
+	private final String version;
+
+	public ManageStaffChatCommand(StaffChatPlugin plugin, String version) {
 		this.plugin = plugin;
+		this.version = version; // Use the version passed to the constructor
 	}
 	
 	@Override
@@ -103,7 +105,7 @@ public class ManageStaffChatCommand implements CommandExecutor, TabCompleter {
 	
 	private void usage(CommandSender sender, String label) {
 		sender.sendMessage(colorful(
-			"&9DiscordSRV-&lStaff&9-&lChat &fv" + plugin.getDescription().getVersion() + " Usage:"
+			"&9DiscordSRV-&lStaff&9-&lChat &fv" + version + " Usage:"
 		));
 		
 		sender.sendMessage(colorful("&f- &7/staffchat &9Toggle automatic staff chat"));
