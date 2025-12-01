@@ -22,20 +22,39 @@
  */
 package com.rezzedup.discordsrv.staffchat.listeners;
 
-import com.rezzedup.discordsrv.staffchat.Permissions;
-import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
-import com.rezzedup.discordsrv.staffchat.config.StaffChatConfig;
-import community.leaf.eventful.bukkit.ListenerOrder;
-import community.leaf.eventful.bukkit.annotations.EventListener;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
+import com.rezzedup.discordsrv.staffchat.Permissions;
+import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
+import com.rezzedup.discordsrv.staffchat.config.StaffChatConfig;
+
+import community.leaf.eventful.bukkit.ListenerOrder;
+import community.leaf.eventful.bukkit.annotations.EventListener;
+
 public class PlayerPrefixedMessageListener implements Listener {
     private final StaffChatPlugin plugin;
     
+    private volatile boolean staffChatEnabled;
+    private volatile String staffChatPrefix;
+    private volatile int staffPrefixLength;
+    private volatile boolean teamChatEnabled;
+    private volatile String teamChatPrefix;
+    private volatile int teamPrefixLength;
+    
     public PlayerPrefixedMessageListener(StaffChatPlugin plugin) {
         this.plugin = plugin;
+        refreshCache();
+    }
+    
+    private void refreshCache() {
+        staffChatEnabled = plugin.config().getOrDefault(StaffChatConfig.PREFIXED_CHAT_ENABLED);
+        staffChatPrefix = plugin.config().getOrDefault(StaffChatConfig.PREFIXED_CHAT_IDENTIFIER);
+        staffPrefixLength = staffChatPrefix.length();
+        teamChatEnabled = plugin.config().getOrDefault(StaffChatConfig.PREFIXED_TEAM_CHAT_ENABLED);
+        teamChatPrefix = plugin.config().getOrDefault(StaffChatConfig.PREFIXED_TEAM_CHAT_IDENTIFIER);
+        teamPrefixLength = teamChatPrefix.length();
     }
     
     @EventListener(ListenerOrder.EARLY)
@@ -43,12 +62,9 @@ public class PlayerPrefixedMessageListener implements Listener {
         Player sender = event.getPlayer();
         String message = event.getMessage();
         
-        // Staff chat messages
-        if (plugin.config().getOrDefault(StaffChatConfig.PREFIXED_CHAT_ENABLED)) {
-            String prefix = plugin.config().getOrDefault(StaffChatConfig.PREFIXED_CHAT_IDENTIFIER);
-            
-            if (message.startsWith(prefix) && Permissions.ACCESS.allows(sender)) {
-                String content = message.substring(prefix.length()).trim();
+        // Staff chat messages - use cached config values
+        if (staffChatEnabled && message.startsWith(staffChatPrefix) && Permissions.ACCESS.allows(sender)) {
+            String content = message.substring(staffPrefixLength).trim();
                 
                 plugin.debug(getClass()).log(event, () ->
                     "Prefixed staff-chat message from " + sender.getName() + ": " + content
@@ -56,27 +72,23 @@ public class PlayerPrefixedMessageListener implements Listener {
                 
                 event.setCancelled(true);
                 
-                // Handle this on the main thread next tick.
-                plugin.sync().run(() -> plugin.submitMessageFromPlayer(sender, content));
-            }
+            // Handle this on the main thread next tick.
+            plugin.sync().run(() -> plugin.submitMessageFromPlayer(sender, content));
+            return;
         }
         
-        // Team chat messages
-        if (plugin.config().getOrDefault(StaffChatConfig.PREFIXED_TEAM_CHAT_ENABLED)) {
-            String prefix = plugin.config().getOrDefault(StaffChatConfig.PREFIXED_TEAM_CHAT_IDENTIFIER);
-            
-            if (message.startsWith(prefix) && Permissions.TEAM_ACCESS.allows(sender)) {
-                String content = message.substring(prefix.length()).trim();
+        // Team chat messages - use cached config values
+        if (teamChatEnabled && message.startsWith(teamChatPrefix) && Permissions.TEAM_ACCESS.allows(sender)) {
+            String content = message.substring(teamPrefixLength).trim();
                 
                 plugin.debug(getClass()).log(event, () ->
                     "Prefixed team-chat message from " + sender.getName() + ": " + content
                 );
-                
-                event.setCancelled(true);
-                
-                // Handle this on the main thread next tick.
-                plugin.sync().run(() -> plugin.submitTeamMessageFromPlayer(sender, content));
-            }
+            
+            event.setCancelled(true);
+            
+            // Handle this on the main thread next tick.
+            plugin.sync().run(() -> plugin.submitTeamMessageFromPlayer(sender, content));
         }
     }
 }

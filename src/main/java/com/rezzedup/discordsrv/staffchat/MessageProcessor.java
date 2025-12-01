@@ -22,6 +22,14 @@
  */
 package com.rezzedup.discordsrv.staffchat;
 
+import java.awt.Color;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.function.Consumer;
+
+import org.bukkit.entity.Player;
+
 import com.rezzedup.discordsrv.staffchat.config.MessagesConfig;
 import com.rezzedup.discordsrv.staffchat.events.ConsoleStaffChatMessageEvent;
 import com.rezzedup.discordsrv.staffchat.events.ConsoleTeamChatMessageEvent;
@@ -31,6 +39,7 @@ import com.rezzedup.discordsrv.staffchat.events.PlayerStaffChatMessageEvent;
 import com.rezzedup.discordsrv.staffchat.events.PlayerTeamChatMessageEvent;
 import com.rezzedup.discordsrv.staffchat.util.MappedPlaceholder;
 import com.rezzedup.discordsrv.staffchat.util.Strings;
+
 import community.leaf.configvalues.bukkit.DefaultYamlValue;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.dependencies.emoji.EmojiParser;
@@ -42,14 +51,7 @@ import github.scarsz.discordsrv.dependencies.jda.api.entities.User;
 import github.scarsz.discordsrv.util.DiscordUtil;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.md_5.bungee.api.ChatColor;
-import org.bukkit.entity.Player;
 import pl.tlinkowski.annotation.basic.NullOr;
-
-import java.awt.*;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.function.Consumer;
 
 public class MessageProcessor {
 	private final StaffChatPlugin plugin;
@@ -59,7 +61,7 @@ public class MessageProcessor {
 	}
 	
 	private boolean hasPlaceholderAPI() {
-		return plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI");
+		return plugin.isPlaceholderApiPresent();
 	}
 	
 	private String parsePlaceholders(Player player, String text) {
@@ -78,7 +80,7 @@ public class MessageProcessor {
 		
 		String formatted = plugin.messages().getOrDefault(format);
 		
-		if (plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+		if (hasPlaceholderAPI()) {
 			// Update format's PAPI placeholders before inserting the message
 			// (which *could* contain arbitrary placeholders itself, ah placeholder injection).
 			@NullOr Player player = (author instanceof Player) ? (Player) author : null;
@@ -104,10 +106,11 @@ public class MessageProcessor {
 			}
 		}
 		
-		plugin.onlineStaffChatParticipants().forEach(staff -> {
+		// Use cached list to avoid repeated stream operations
+		for (Player staff : plugin.getCachedStaffParticipants()) {
 			staff.sendMessage(content);
 			plugin.config().playMessageSound(staff);
-		});
+		}
 		
 		plugin.getServer().getConsoleSender().sendMessage(content);
 	}
@@ -264,7 +267,7 @@ public class MessageProcessor {
 		
 		String formatted = plugin.messages().getOrDefault(format);
 		
-		if (plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+		if (hasPlaceholderAPI()) {
 			// Update format's PAPI placeholders before inserting the message
 			@NullOr Player player = (author instanceof Player) ? (Player) author : null;
 			formatted = parsePlaceholders(player, formatted);
@@ -289,10 +292,10 @@ public class MessageProcessor {
 			}
 		}
 		
-		plugin.onlineTeamChatParticipants().forEach(team -> {
+		for (Player team : plugin.getCachedTeamParticipants()) {
 			team.sendMessage(content);
 			plugin.config().playTeamMessageSound(team);
-		});
+		}
 		
 		plugin.getServer().getConsoleSender().sendMessage(content);
 	}

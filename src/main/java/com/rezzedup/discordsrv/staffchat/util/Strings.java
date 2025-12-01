@@ -22,13 +22,11 @@
  */
 package com.rezzedup.discordsrv.staffchat.util;
 
-import net.md_5.bungee.api.ChatColor;
-import pl.tlinkowski.annotation.basic.NullOr;
-
-import java.util.HashSet;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import net.md_5.bungee.api.ChatColor;
+import pl.tlinkowski.annotation.basic.NullOr;
 
 public class Strings {
 	private Strings() {
@@ -42,29 +40,18 @@ public class Strings {
 		}
 		
 		Matcher matcher = HASH_HEX_COLOR_PATTERN.matcher(text);
-		@NullOr Set<String> replaced = null;
-		
+		StringBuffer sb = new StringBuffer(text.length() + (text.length() >> 3));
 		while (matcher.find()) {
-			if (replaced == null) {
-				replaced = new HashSet<>();
-			}
-			
-			String match = matcher.group();
-			if (replaced.contains(match)) {
-				continue;
-			}
-			
-			StringBuilder bungeeHexFormat = new StringBuilder("&x");
-			
+			StringBuilder bungeeHexFormat = new StringBuilder(14);
+			bungeeHexFormat.append("&x");
 			for (char c : matcher.group("hex").toCharArray()) {
 				bungeeHexFormat.append('&').append(c);
 			}
-			
-			text = text.replace(match, bungeeHexFormat.toString());
-			replaced.add(match);
+			matcher.appendReplacement(sb, Matcher.quoteReplacement(bungeeHexFormat.toString()));
 		}
+		matcher.appendTail(sb);
 		
-		return ChatColor.translateAlternateColorCodes('&', text);
+		return ChatColor.translateAlternateColorCodes('&', sb.toString());
 	}
 	
 	public static boolean isEmptyOrNull(@NullOr String text) {

@@ -22,18 +22,20 @@
  */
 package com.rezzedup.discordsrv.staffchat.listeners;
 
-import com.rezzedup.discordsrv.staffchat.Permissions;
-import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
-import com.rezzedup.discordsrv.staffchat.config.StaffChatConfig;
-import community.leaf.eventful.bukkit.ListenerOrder;
-import community.leaf.eventful.bukkit.annotations.EventListener;
+import java.util.ArrayDeque;
+import java.util.Deque;
+
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
+import com.rezzedup.discordsrv.staffchat.Permissions;
+import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
+import com.rezzedup.discordsrv.staffchat.config.StaffChatConfig;
+
+import community.leaf.eventful.bukkit.ListenerOrder;
+import community.leaf.eventful.bukkit.annotations.EventListener;
 
 public class JoinNotificationListener implements Listener {
 	private final StaffChatPlugin plugin;
@@ -45,6 +47,7 @@ public class JoinNotificationListener implements Listener {
 	@EventListener(ListenerOrder.EARLY)
 	public void onPlayerJoin(PlayerJoinEvent event) {
 		Player player = event.getPlayer();
+		plugin.invalidatePlayerCache();
 		plugin.data().updateProfile(player);
 		
 		Deque<Runnable> reminders = new ArrayDeque<>();
@@ -102,6 +105,7 @@ public class JoinNotificationListener implements Listener {
 	@EventListener(ListenerOrder.EARLY)
 	public void onPlayerQuit(PlayerQuitEvent event) {
 		// Might as well update the profile (cleanup)
+		plugin.invalidatePlayerCache();
 		plugin.data().updateProfile(event.getPlayer());
 	}
 }

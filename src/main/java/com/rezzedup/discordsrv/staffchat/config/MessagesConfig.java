@@ -22,6 +22,11 @@
  */
 package com.rezzedup.discordsrv.staffchat.config;
 
+import java.util.List;
+import java.util.function.Predicate;
+
+import org.bukkit.entity.Player;
+
 import com.github.zafarkhaja.semver.Version;
 import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
 import com.rezzedup.discordsrv.staffchat.Updater;
@@ -29,6 +34,7 @@ import com.rezzedup.discordsrv.staffchat.util.MappedPlaceholder;
 import com.rezzedup.discordsrv.staffchat.util.Strings;
 import com.rezzedup.util.constants.Aggregates;
 import com.rezzedup.util.constants.annotations.AggregatedResult;
+
 import community.leaf.configvalues.bukkit.DefaultYamlValue;
 import community.leaf.configvalues.bukkit.ExampleYamlValue;
 import community.leaf.configvalues.bukkit.YamlValue;
@@ -36,11 +42,7 @@ import community.leaf.configvalues.bukkit.data.Load;
 import community.leaf.configvalues.bukkit.data.YamlDataFile;
 import community.leaf.configvalues.bukkit.migrations.Migration;
 import community.leaf.configvalues.bukkit.util.Sections;
-import org.bukkit.entity.Player;
 import pl.tlinkowski.annotation.basic.NullOr;
-
-import java.util.List;
-import java.util.function.Predicate;
 
 public class MessagesConfig extends YamlDataFile {
     public static final YamlValue<Version> VERSION =

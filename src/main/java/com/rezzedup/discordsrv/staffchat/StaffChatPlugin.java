@@ -22,9 +22,23 @@
  */
 package com.rezzedup.discordsrv.staffchat;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.function.Consumer;
+
+import org.bstats.bukkit.Metrics;
+import org.bstats.charts.SimplePie;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
+
+import com.github.Anon8281.universalScheduler.UniversalScheduler;
 import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
-import com.github.Anon8281.universalScheduler.UniversalScheduler;
 import com.github.zafarkhaja.semver.Version;
 import com.rezzedup.discordsrv.staffchat.commands.ManageStaffChatCommand;
 import com.rezzedup.discordsrv.staffchat.commands.ManageTeamChatCommand;
@@ -43,6 +57,7 @@ import com.rezzedup.discordsrv.staffchat.listeners.PlayerPrefixedMessageListener
 import com.rezzedup.discordsrv.staffchat.listeners.PlayerStaffChatToggleListener;
 import com.rezzedup.discordsrv.staffchat.listeners.PlayerTeamChatToggleListener;
 import com.rezzedup.discordsrv.staffchat.util.FileIO;
+
 import community.leaf.configvalues.bukkit.YamlValue;
 import community.leaf.configvalues.bukkit.data.YamlDataFile;
 import community.leaf.eventful.bukkit.BukkitEventSource;
@@ -50,20 +65,7 @@ import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.Message;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.User;
-import org.bstats.bukkit.Metrics;
-import org.bstats.charts.SimplePie;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.command.TabCompleter;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.java.JavaPlugin;
 import pl.tlinkowski.annotation.basic.NullOr;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.function.Consumer;
 
 public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, StaffChatAPI {
 	// https://bstats.org/plugin/bukkit/DiscordSRV-Staff-Chat/11056
@@ -86,6 +88,12 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 	private @NullOr DiscordStaffChatListener discordSrvHook;
 
 	private String serverType;
+	private volatile boolean placeholderApiPresent;
+	
+	private volatile java.util.List<Player> cachedStaffParticipants = java.util.Collections.emptyList();
+	private volatile java.util.List<Player> cachedTeamParticipants = java.util.Collections.emptyList();
+	private volatile long lastPlayerCacheUpdate = 0;
+	private static final long PLAYER_CACHE_TTL_MS = 1000;
 	
 	private static TaskScheduler scheduler;
 	
@@ -101,6 +109,10 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 		this.backupsDirectoryPath = pluginDirectoryPath.resolve("backups");
 		
 		this.debugger = new Debugger(this);
+				this.placeholderApiPresent = getServer().getPluginManager().isPluginEnabled("PlaceholderAPI");
+				if (placeholderApiPresent) {
+					getLogger().info("Detected PlaceholderAPI; placeholder parsing enabled.");
+				}
 		
 		debug(getClass()).header(() -> "Starting Plugin: " + this);
 		debugger().schedulePluginStatus(getClass(), "Enable");
@@ -169,6 +181,46 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 		onlineTeamChatParticipants()
 			.filter(data()::isAutomaticTeamChatEnabled)
 			.forEach(messages()::notifyAutoTeamChatEnabled);
+	}
+
+	public boolean isPlaceholderApiPresent() {
+		return placeholderApiPresent;
+	}
+	
+	/**
+	 * Get cached list of online staff chat participants.
+	 * Uses a short TTL cache to avoid repeated permission checks and stream operations.
+	 */
+	public java.util.List<Player> getCachedStaffParticipants() {
+		long now = System.currentTimeMillis();
+		if (now - lastPlayerCacheUpdate > PLAYER_CACHE_TTL_MS) {
+			synchronized (this) {
+				// Double-check after acquiring lock
+				if (now - lastPlayerCacheUpdate > PLAYER_CACHE_TTL_MS) {
+					cachedStaffParticipants = onlineStaffChatParticipants()
+						.collect(java.util.stream.Collectors.toList());
+					cachedTeamParticipants = onlineTeamChatParticipants()
+						.collect(java.util.stream.Collectors.toList());
+					lastPlayerCacheUpdate = now;
+				}
+			}
+		}
+		return cachedStaffParticipants;
+	}
+	
+	/**
+	 * Get cached list of online team chat participants.
+	 */
+	public java.util.List<Player> getCachedTeamParticipants() {
+		getCachedStaffParticipants(); // Ensures both caches are refreshed together
+		return cachedTeamParticipants;
+	}
+	
+	/**
+	 * Invalidate player cache (call on join/quit events).
+	 */
+	public void invalidatePlayerCache() {
+		lastPlayerCacheUpdate = 0;
 	}
 	
 	@Override

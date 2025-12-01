@@ -22,8 +22,6 @@
  */
 package com.rezzedup.discordsrv.staffchat.util;
 
-import pl.tlinkowski.annotation.basic.NullOr;
-
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -31,10 +29,12 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
+import pl.tlinkowski.annotation.basic.NullOr;
+
 public class MappedPlaceholder {
-	public static Pattern PATTERN = Pattern.compile("%(.+?)%");
+	public static final Pattern PATTERN = Pattern.compile("%(.+?)%");
 	
-	protected final Map<String, Supplier<?>> placeholders = new HashMap<>();
+	protected final Map<String, Supplier<?>> placeholders = new HashMap<>(32);
 	
 	public String get(@NullOr String placeholder) {
 		if (Strings.isEmptyOrNull(placeholder)) {
@@ -61,6 +61,9 @@ public class MappedPlaceholder {
 	}
 	
 	public String update(String message) {
+		if (message.indexOf('%') == -1) {
+			return message;
+		}
 		return PATTERN.matcher(message).replaceAll(mr -> {
 			String value = get(mr.group(1));
 			return escape((value.isEmpty()) ? mr.group() : value);

@@ -55,14 +55,14 @@
     <dependency>
       <groupId>dev.folia</groupId>
       <artifactId>folia-api</artifactId>
-      <version>1.20.4-R0.1-SNAPSHOT</version>
+      <version>1.21.8-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
     <!-- DiscordSRV (via scarsz-nexus) -->
     <dependency>
       <groupId>com.discordsrv</groupId>
       <artifactId>discordsrv</artifactId>
-      <version>1.28.0</version>
+      <version>1.30.0</version>
       <scope>provided</scope>
     </dependency>
     <!-- PlaceholderAPI (via jitpack.io) -->
@@ -95,7 +95,7 @@
     <dependency>
       <groupId>org.bstats</groupId>
       <artifactId>bstats-bukkit</artifactId>
-      <version>3.0.2</version>
+      <version>3.1.0</version>
     </dependency>
     <!-- Nullness Annotations: @NullOr (via maven-central) -->
     <dependency>
@@ -130,7 +130,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>3.6.0</version>
+        <version>3.6.1</version>
         <executions>
           <execution>
             <phase>package</phase>

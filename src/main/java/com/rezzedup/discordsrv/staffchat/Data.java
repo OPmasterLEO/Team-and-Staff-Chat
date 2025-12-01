@@ -22,29 +22,30 @@
  */
 package com.rezzedup.discordsrv.staffchat;
 
+import java.time.Instant;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Player;
+
 import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import com.rezzedup.discordsrv.staffchat.config.StaffChatConfig;
 import com.rezzedup.discordsrv.staffchat.events.AutoStaffChatToggleEvent;
 import com.rezzedup.discordsrv.staffchat.events.AutoTeamChatToggleEvent;
 import com.rezzedup.discordsrv.staffchat.events.ReceivingStaffChatToggleEvent;
 import com.rezzedup.discordsrv.staffchat.events.ReceivingTeamChatToggleEvent;
+
 import community.leaf.configvalues.bukkit.YamlValue;
 import community.leaf.configvalues.bukkit.data.YamlDataFile;
 import community.leaf.configvalues.bukkit.util.Sections;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.Player;
 import pl.tlinkowski.annotation.basic.NullOr;
-
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
 
 public class Data extends YamlDataFile implements StaffChatData {
 	private static final String PROFILES_PATH = "staff-chat.profiles";
 	
-	private final Map<UUID, Profile> profilesByUuid = new HashMap<>();
+	private final Map<UUID, Profile> profilesByUuid = new java.util.concurrent.ConcurrentHashMap<>(128);
 	
 	private final StaffChatPlugin plugin;
 	
