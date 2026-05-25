@@ -42,10 +42,11 @@ public class Strings {
 		Matcher matcher = HASH_HEX_COLOR_PATTERN.matcher(text);
 		StringBuffer sb = new StringBuffer(text.length() + (text.length() >> 3));
 		while (matcher.find()) {
+			String hex = matcher.group("hex");
 			StringBuilder bungeeHexFormat = new StringBuilder(14);
 			bungeeHexFormat.append("&x");
-			for (char c : matcher.group("hex").toCharArray()) {
-				bungeeHexFormat.append('&').append(c);
+			for (int i = 0; i < hex.length(); i++) {
+				bungeeHexFormat.append('&').append(hex.charAt(i));
 			}
 			matcher.appendReplacement(sb, Matcher.quoteReplacement(bungeeHexFormat.toString()));
 		}

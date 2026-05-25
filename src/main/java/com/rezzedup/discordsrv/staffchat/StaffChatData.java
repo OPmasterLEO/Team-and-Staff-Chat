@@ -61,4 +61,6 @@ public interface StaffChatData {
 	}
 	
 	void updateProfile(Player player);
+
+	void evictProfile(UUID uuid);
 }

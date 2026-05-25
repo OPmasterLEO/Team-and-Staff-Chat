@@ -55,19 +55,6 @@ public class Data extends YamlDataFile implements StaffChatData {
 		super(plugin.directory().resolve("data"), "staff-chat.data.yml");
 		this.plugin = plugin;
 		
-		// Load persistent toggles.
-		if (plugin.config().getOrDefault(StaffChatConfig.PERSIST_TOGGLES)) {
-			Sections.get(data(), PROFILES_PATH).ifPresent(section ->
-			{
-				for (String key : section.getKeys(false)) {
-					try {
-						getOrCreateProfile(UUID.fromString(key));
-					} catch (IllegalArgumentException ignored) {
-					}
-				}
-			});
-		}
-		
 		// Start the save task (run sync every 2 minutes; async repeating caused UnsupportedOperationException on this server).
 		long periodTicks = 2L * 60L * 20L;
 		task = StaffChatPlugin.getScheduler().runTaskTimer(() -> {
@@ -88,6 +75,7 @@ public class Data extends YamlDataFile implements StaffChatData {
 		if (isUpdated()) {
 			save();
 		}
+		profilesByUuid.clear();
 	}
 	
 	@Override
@@ -147,6 +135,11 @@ public class Data extends YamlDataFile implements StaffChatData {
 				profilesByUuid.remove(player.getUniqueId());
 			}
 		}
+	}
+
+	@Override
+	public void evictProfile(UUID uuid) {
+		profilesByUuid.remove(uuid);
 	}
 	
 	static class Profile implements StaffChatProfile {

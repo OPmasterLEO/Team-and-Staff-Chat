@@ -30,6 +30,7 @@ import org.bukkit.plugin.Plugin;
 import pl.tlinkowski.annotation.basic.NullOr;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -100,15 +101,19 @@ public class Debugger {
 	
 	private void printThenWriteToLogFile(String message) {
 		plugin.getLogger().info("[Debug] " + message);
-		
-		try {
-			if (!Files.isRegularFile(debugLogFile)) {
-				Files.createFile(debugLogFile);
+
+		plugin.async().run(() -> {
+			try {
+				Files.write(
+					debugLogFile,
+					("[" + now() + "] " + message + "\n").getBytes(StandardCharsets.UTF_8),
+					StandardOpenOption.CREATE,
+					StandardOpenOption.APPEND
+				);
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-			Files.write(debugLogFile, ("[" + now() + "] " + message + "\n").getBytes(), StandardOpenOption.APPEND);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		});
 	}
 	
 	public void schedulePluginStatus(Class<?> clazz, String context) {

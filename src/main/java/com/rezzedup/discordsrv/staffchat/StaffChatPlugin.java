@@ -26,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
@@ -215,19 +216,26 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 	public void onDisable() {
 		debug(getClass()).log("Disable", () -> "Disabling plugin...");
 		
-		data().end();
-		updater().end();
-		
 		// Display toggle message so that auto staff-chat users are aware that their chat is public again.
 		// Useful when selectively disabling this plugin on a live server.
-		onlineStaffChatParticipants()
-			.filter(data()::isAutomaticStaffChatEnabled)
+		getServer().getOnlinePlayers().stream()
+			.filter(Permissions.ACCESS::allows)
+			.filter(player -> data().getProfile(player.getUniqueId())
+				.filter(StaffChatProfile::receivesStaffChatMessages)
+				.filter(StaffChatProfile::automaticStaffChat)
+				.isPresent())
 			.forEach(messages()::notifyAutoChatDisabled);
 			
 		// Same for team chat users
-		onlineTeamChatParticipants()
-			.filter(data()::isAutomaticTeamChatEnabled)
+		getServer().getOnlinePlayers().stream()
+			.filter(Permissions.TEAM_ACCESS::allows)
+			.filter(player -> data().getProfile(player.getUniqueId())
+				.filter(StaffChatProfile::receivesTeamChatMessages)
+				.filter(StaffChatProfile::automaticTeamChat)
+				.isPresent())
 			.forEach(messages()::notifyAutoTeamChatDisabled);
+
+		updater().end();
 		
 		if (isDiscordSrvHookEnabled()) {
 			debug(getClass()).log("Disable", () -> "Unsubscribing from DiscordSRV API (hook is enabled)");
@@ -237,6 +245,8 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 			} catch (RuntimeException ignored) {
 			} // Don't show a user-facing error if DiscordSRV is already unloaded.
 		}
+
+		data().end();
 		CommandAPI.onDisable();
 		debug(getClass()).header(() -> "Disabled Plugin: " + this);
 	}
@@ -601,6 +611,14 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 		 * @param consumer Consumer that receives the scheduled task
 		 */
 		public void run(Consumer<MyScheduledTask> consumer) {
+			AtomicReference<MyScheduledTask> taskRef = new AtomicReference<>();
+			Runnable callback = () -> {
+				MyScheduledTask currentTask = taskRef.get();
+				if (currentTask != null) {
+					consumer.accept(currentTask);
+				}
+			};
+
 			MyScheduledTask task;
 			
 			if (async) {
@@ -608,26 +626,18 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 				if (delayTicks > 0) {
 					if (periodTicks > 0) {
 						// Delayed repeating async task
-						task = scheduler.runTaskTimerAsynchronously(() -> {
-							consumer.accept(null); // Can't pass the task to itself in constructor
-						}, delayTicks, periodTicks);
+						task = scheduler.runTaskTimerAsynchronously(callback, delayTicks, periodTicks);
 					} else {
 						// Delayed async task
-						task = scheduler.runTaskLaterAsynchronously(() -> {
-							consumer.accept(null);
-						}, delayTicks);
+						task = scheduler.runTaskLaterAsynchronously(callback, delayTicks);
 					}
 				} else {
 					if (periodTicks > 0) {
 						// Immediate repeating async task
-						task = scheduler.runTaskTimerAsynchronously(() -> {
-							consumer.accept(null);
-						}, 0, periodTicks);
+						task = scheduler.runTaskTimerAsynchronously(callback, 0, periodTicks);
 					} else {
 						// Immediate async task
-						task = scheduler.runTaskAsynchronously(() -> {
-							consumer.accept(null);
-						});
+						task = scheduler.runTaskAsynchronously(callback);
 					}
 				}
 			} else {
@@ -635,29 +645,23 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 				if (delayTicks > 0) {
 					if (periodTicks > 0) {
 						// Delayed repeating sync task
-						task = scheduler.runTaskTimer(() -> {
-							consumer.accept(null);
-						}, delayTicks, periodTicks);
+						task = scheduler.runTaskTimer(callback, delayTicks, periodTicks);
 					} else {
 						// Delayed sync task
-						task = scheduler.runTaskLater(() -> {
-							consumer.accept(null);
-						}, delayTicks);
+						task = scheduler.runTaskLater(callback, delayTicks);
 					}
 				} else {
 					if (periodTicks > 0) {
 						// Immediate repeating sync task
-						task = scheduler.runTaskTimer(() -> {
-							consumer.accept(null);
-						}, 0, periodTicks);
+						task = scheduler.runTaskTimer(callback, 0, periodTicks);
 					} else {
 						// Immediate sync task
-						task = scheduler.runTask(() -> {
-							consumer.accept(null);
-						});
+						task = scheduler.runTask(callback);
 					}
 				}
 			}
+
+			taskRef.set(task);
 			
 			// Run once more with the actual task
 			consumer.accept(task);

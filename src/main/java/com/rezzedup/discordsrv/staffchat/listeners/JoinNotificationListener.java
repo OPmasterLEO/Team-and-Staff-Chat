@@ -91,21 +91,21 @@ public class JoinNotificationListener implements Listener {
 		if (reminders.isEmpty()) {
 			return;
 		}
-		
-		plugin.sync().delay(10).ticks().every(10).ticks().run(task ->
-		{
-			if (reminders.isEmpty()) {
-				task.cancel();
-			} else {
-				reminders.pop().run();
-			}
-		});
+
+		int reminderCount = reminders.size();
+		for (int i = 0; i < reminderCount; i++) {
+			Runnable reminder = reminders.pop();
+			long delayTicks = 10L + (10L * i);
+			plugin.sync().delay(delayTicks).ticks().run(reminder);
+		}
 	}
 	
 	@EventListener(ListenerOrder.EARLY)
 	public void onPlayerQuit(PlayerQuitEvent event) {
 		// Might as well update the profile (cleanup)
 		plugin.invalidatePlayerCache();
-		plugin.data().updateProfile(event.getPlayer());
+		Player player = event.getPlayer();
+		plugin.data().updateProfile(player);
+		plugin.data().evictProfile(player.getUniqueId());
 	}
 }

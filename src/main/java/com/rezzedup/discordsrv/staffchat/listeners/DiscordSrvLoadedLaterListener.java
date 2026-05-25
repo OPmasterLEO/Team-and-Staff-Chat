@@ -37,6 +37,9 @@ public class DiscordSrvLoadedLaterListener implements Listener {
 	@EventListener
 	public void onPluginEnable(PluginEnableEvent event) {
 		if (StaffChatPlugin.DISCORDSRV.equals(event.getPlugin().getName())) {
+			if (plugin.isDiscordSrvHookEnabled()) {
+				return;
+			}
 			plugin.debug(getClass()).log(event, () -> "DiscordSRV loaded late: " + event.getPlugin());
 			plugin.debugger().schedulePluginStatus(getClass(), "Loaded Late");
 			plugin.subscribeToDiscordSrv(event.getPlugin());
