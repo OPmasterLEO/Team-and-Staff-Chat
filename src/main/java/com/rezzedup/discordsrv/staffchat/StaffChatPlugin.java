@@ -249,6 +249,7 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 		data().end();
 		CommandAPI.onDisable();
 		debug(getClass()).header(() -> "Disabled Plugin: " + this);
+		debugger().end();
 	}
 	
 	private <T> T initialized(@NullOr T thing) {
@@ -467,6 +468,13 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 	 */
 	public static TaskScheduler getScheduler() {
 		return scheduler;
+	}
+
+	/**
+	 * Runs work on the server async scheduler in a Folia-compatible way.
+	 */
+	public void runAsync(Runnable runnable) {
+		getServer().getAsyncScheduler().runNow(this, task -> runnable.run());
 	}
 	
 	/* ------------------------------------------------------------------

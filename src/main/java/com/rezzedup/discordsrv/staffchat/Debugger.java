@@ -36,6 +36,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public class Debugger {
@@ -49,6 +52,11 @@ public class Debugger {
 	private final StaffChatPlugin plugin;
 	private final Path debugToggleFile;
 	private final Path debugLogFile;
+	private final ExecutorService logExecutor = Executors.newSingleThreadExecutor(r -> {
+		Thread thread = new Thread(r, "staffchat-debug-logger");
+		thread.setDaemon(true);
+		return thread;
+	});
 	
 	private boolean isEnabled;
 	
@@ -102,7 +110,7 @@ public class Debugger {
 	private void printThenWriteToLogFile(String message) {
 		plugin.getLogger().info("[Debug] " + message);
 
-		plugin.async().run(() -> {
+		logExecutor.execute(() -> {
 			try {
 				Files.write(
 					debugLogFile,
@@ -114,6 +122,18 @@ public class Debugger {
 				e.printStackTrace();
 			}
 		});
+	}
+
+	public void end() {
+		logExecutor.shutdown();
+		try {
+			if (!logExecutor.awaitTermination(3, TimeUnit.SECONDS)) {
+				logExecutor.shutdownNow();
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			logExecutor.shutdownNow();
+		}
 	}
 	
 	public void schedulePluginStatus(Class<?> clazz, String context) {

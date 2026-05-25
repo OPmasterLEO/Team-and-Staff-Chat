@@ -189,7 +189,7 @@ public class MessageProcessor {
 		if (plugin.isDiscordSrvHookEnabled()) {
 			sendToDiscord(StaffChatPlugin.CHANNEL, channel -> {
 				// Send to discord off the main thread (just like DiscordSRV does)
-				plugin.async().run(() ->
+				plugin.runAsync(() ->
 					DiscordSRV.getPlugin().processChatMessage(author, message, StaffChatPlugin.CHANNEL, false)
 				);
 			});
@@ -353,7 +353,7 @@ public class MessageProcessor {
 		if (plugin.isDiscordSrvHookEnabled()) {
 			sendToDiscord(StaffChatPlugin.TEAM_CHANNEL, channel -> {
 				// Send to discord off the main thread (just like DiscordSRV does)
-				plugin.async().run(() ->
+				plugin.runAsync(() ->
 					DiscordSRV.getPlugin().processChatMessage(author, message, StaffChatPlugin.TEAM_CHANNEL, false)
 				);
 			});
