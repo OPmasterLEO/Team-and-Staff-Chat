@@ -23,28 +23,27 @@
 package com.rezzedup.discordsrv.staffchat.commands;
 
 import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.executors.PlayerCommandExecutor;
 
-public class ToggleTeamChatCommand implements CommandExecutor {
+public class ToggleTeamChatCommand {
 	private final StaffChatPlugin plugin;
 	
 	public ToggleTeamChatCommand(StaffChatPlugin plugin) {
 		this.plugin = plugin;
 	}
 	
-	@Override
-	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		if (sender instanceof Player) {
-			// Either join or leave so...
-			plugin.data().getOrCreateProfile((Player) sender)
-				.receivesTeamChatMessages(command.getName().contains("join"));
-		} else {
-			sender.sendMessage("Only players may run this command.");
-		}
-		
-		return true;
+	public void register() {
+		registerToggle("jointeamchat", true, "jointc");
+		registerToggle("leaveteamchat", false, "leavetc");
+	}
+	
+	private void registerToggle(String name, boolean receiving, String alias) {
+		new CommandAPICommand(name)
+			.withAliases(alias)
+			.withPermission("teamchat.access")
+			.executesPlayer((PlayerCommandExecutor) (player, args) ->
+				plugin.data().getOrCreateProfile(player).receivesTeamChatMessages(receiving))
+			.register();
 	}
 }

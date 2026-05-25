@@ -6,7 +6,7 @@
   
   <groupId>com.rezzedup</groupId>
   <artifactId>discordsrv-staff-chat</artifactId>
-  <version>1.4.6</version>
+  <version>1.4.7</version>
   
   <name>DiscordSRV-Staff-Chat</name>
   <inceptionYear>2017</inceptionYear>
@@ -44,6 +44,11 @@
   </repositories>
   
   <dependencies>
+    <dependency>
+      <groupId>dev.jorel</groupId>
+      <artifactId>commandapi-paper-shade</artifactId>
+      <version>11.1.0</version>
+    </dependency>
     <!-- Paper API-->
     <dependency>
       <groupId>io.papermc.paper</groupId>
@@ -155,6 +160,10 @@
                 <relocation>
                   <pattern>org.bstats</pattern>
                   <shadedPattern>${shade.relocation}.org.bstats</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>dev.jorel.commandapi</pattern>
+                  <shadedPattern>${shade.relocation}.dev.jorel.commandapi</shadedPattern>
                 </relocation>
               </relocations>
               <artifactSet>

@@ -29,9 +29,6 @@ import java.util.function.Consumer;
 
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -61,6 +58,8 @@ import com.rezzedup.discordsrv.staffchat.util.FileIO;
 import community.leaf.configvalues.bukkit.YamlValue;
 import community.leaf.configvalues.bukkit.data.YamlDataFile;
 import community.leaf.eventful.bukkit.BukkitEventSource;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.Message;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
@@ -96,6 +95,11 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 	private static final long PLAYER_CACHE_TTL_MS = 1000;
 	
 	private static TaskScheduler scheduler;
+
+	@Override
+	public void onLoad() {
+		CommandAPI.onLoad(new CommandAPIPaperConfig(this));
+	}
 	
 	@Override
 	public void onEnable() {
@@ -116,6 +120,7 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 		
 		debug(getClass()).header(() -> "Starting Plugin: " + this);
 		debugger().schedulePluginStatus(getClass(), "Enable");
+		CommandAPI.onEnable();
 		
 		// Initialize UniversalScheduler first so we can use it for scheduling
 		scheduler = UniversalScheduler.getScheduler(this);
@@ -134,25 +139,8 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 		events().register(new PlayerPrefixedMessageListener(this));
 		events().register(new PlayerStaffChatToggleListener(this));
 		events().register(new PlayerTeamChatToggleListener(this));
-		
-		// Staff chat commands
-		command("staffchat", new StaffChatCommand(this));
-		// Replace deprecated direct call when registering manage command
-		command("managestaffchat", new ManageStaffChatCommand(this, v.toString()));
-		command("togglestaffchatsounds", new ToggleStaffChatSoundsCommand(this));
-		
-		ToggleStaffChatCommand staffToggle = new ToggleStaffChatCommand(this);
-		command("leavestaffchat", staffToggle);
-		command("joinstaffchat", staffToggle);
-		
-		// Team chat commands
-		command("teamchat", new TeamChatCommand(this));
-		command("manageteamchat", new ManageTeamChatCommand(this));
-		command("toggleteamchatsounds", new ToggleTeamChatSoundsCommand(this));
-		
-		ToggleTeamChatCommand teamToggle = new ToggleTeamChatCommand(this);
-		command("leaveteamchat", teamToggle);
-		command("jointeamchat", teamToggle);
+
+		registerCommands(v.toString());
 		
 		@NullOr Plugin discordSrv = getServer().getPluginManager().getPlugin(DISCORDSRV);
 		
@@ -249,7 +237,7 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 			} catch (RuntimeException ignored) {
 			} // Don't show a user-facing error if DiscordSRV is already unloaded.
 		}
-		
+		CommandAPI.onDisable();
 		debug(getClass()).header(() -> "Disabled Plugin: " + this);
 	}
 	
@@ -420,23 +408,15 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 		}
 	}
 	
-	private void command(String name, CommandExecutor executor) {
-		@NullOr PluginCommand command = getCommand(name);
-		
-		if (command == null) {
-			debug(getClass()).log("Command: Setup", () ->
-				"Unable to register command /" + name + " because it is not defined in plugin.yml"
-			);
-			return;
-		}
-		
-		command.setExecutor(executor);
-		debug(getClass()).log("Command: Setup", () -> "Registered command executor for: /" + name);
-		
-		if (executor instanceof TabCompleter) {
-			command.setTabCompleter((TabCompleter) executor);
-			debug(getClass()).log("Command: Setup", () -> "Registered tab completer for: /" + name);
-		}
+	private void registerCommands(String versionString) {
+		new StaffChatCommand(this).register();
+		new ManageStaffChatCommand(this, versionString).register();
+		new ToggleStaffChatSoundsCommand(this).register();
+		new ToggleStaffChatCommand(this).register();
+		new TeamChatCommand(this).register();
+		new ManageTeamChatCommand(this).register();
+		new ToggleTeamChatSoundsCommand(this).register();
+		new ToggleTeamChatCommand(this).register();
 	}
 
 	/* ------------------------------------------------------------------

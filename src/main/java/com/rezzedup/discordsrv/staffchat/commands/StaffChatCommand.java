@@ -23,39 +23,44 @@
 package com.rezzedup.discordsrv.staffchat.commands;
 
 import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.arguments.GreedyStringArgument;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 
-public class StaffChatCommand implements CommandExecutor {
+public class StaffChatCommand {
 	private final StaffChatPlugin plugin;
 	
 	public StaffChatCommand(StaffChatPlugin plugin) {
 		this.plugin = plugin;
 	}
 	
-	@Override
-	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		if (args.length <= 0) {
-			// Show usage to console (only players can enable auto chat)
-			if (!(sender instanceof Player)) {
-				return false;
-			}
-			plugin.data().getOrCreateProfile((Player) sender).toggleAutomaticStaffChat();
-		} else {
-			String message = String.join(" ", args);
-			
-			if (sender instanceof Player) {
-				plugin.submitMessageFromPlayer((Player) sender, message);
-			} else if (sender instanceof ConsoleCommandSender) {
-				plugin.submitMessageFromConsole(message);
-			} else {
-				sender.sendMessage("Unsupported command sender type: " + sender.getClass().getSimpleName());
-			}
-		}
-		
-		return true;
+	public void register() {
+		new CommandAPICommand("staffchat")
+			.withAliases("adminchat", "schat", "achat", "sc", "ac", "a")
+			.withPermission("staffchat.access")
+			.withOptionalArguments(new GreedyStringArgument("message"))
+			.executes((sender, args) -> {
+				if (sender == null) {
+					return;
+				}
+				String message = (String) args.get("message");
+				if (message == null || message.isBlank()) {
+					if (sender instanceof Player) {
+						plugin.data().getOrCreateProfile((Player) sender).toggleAutomaticStaffChat();
+					} else {
+						sender.sendMessage("Only players may toggle automatic staff chat.");
+					}
+					return;
+				}
+				if (sender instanceof Player) {
+					plugin.submitMessageFromPlayer((Player) sender, message);
+				} else if (sender instanceof ConsoleCommandSender) {
+					plugin.submitMessageFromConsole(message);
+				} else {
+					sender.sendMessage("Unsupported command sender type: " + sender.getClass().getSimpleName());
+				}
+			})
+			.register();
 	}
 }

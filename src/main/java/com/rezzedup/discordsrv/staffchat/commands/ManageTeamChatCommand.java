@@ -26,22 +26,19 @@ import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
 import com.rezzedup.util.constants.Aggregates;
 import com.rezzedup.util.constants.MatchRules;
 import com.rezzedup.util.constants.annotations.AggregatedResult;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.arguments.ArgumentSuggestions;
+import dev.jorel.commandapi.arguments.StringArgument;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import pl.tlinkowski.annotation.basic.NullOr;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static com.rezzedup.discordsrv.staffchat.util.Strings.colorful;
 
-public class ManageTeamChatCommand implements CommandExecutor, TabCompleter {
+public class ManageTeamChatCommand {
 	private static final Set<String> RELOAD_ALIASES = Set.of("reload");
 	private static final Set<String> DEBUG_ALIASES = Set.of("debug");
 	private static final Set<String> HELP_ALIASES = Set.of("help", "usage", "?");
@@ -61,44 +58,33 @@ public class ManageTeamChatCommand implements CommandExecutor, TabCompleter {
 		this.plugin = plugin;
 	}
 	
-	@Override
-	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		@NullOr String option = (args.length >= 1) ? args[0].toLowerCase(Locale.ROOT) : null;
-		
-		if (option == null || HELP_ALIASES.contains(option)) {
-			usage(sender, label);
-		} else if (RELOAD_ALIASES.contains(option)) {
-			reload(sender);
-		} else if (DEBUG_ALIASES.contains(option)) {
-			debug(sender);
-		} else {
-			sender.sendMessage(colorful(
-				"&9&lDiscordSRV-Team-Chat&f: &7&oUnknown arguments: " + String.join(" ", args)
-			));
-		}
-		
-		return true;
-	}
-	
-	@Override
-	public @NullOr List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-		@NullOr List<String> suggestions = null;
-		
-		if (args.length <= 0) {
-			suggestions = new ArrayList<>(ALL_OPTION_ALIASES);
-		} else if (args.length == 1) {
-			String last = args[0].toLowerCase(Locale.ROOT);
-			
-			suggestions =
-				ALL_OPTION_ALIASES.stream()
-					.filter(option -> option.contains(last))
-					.collect(Collectors.toCollection(ArrayList::new));
-		}
-		
-		if (suggestions != null) {
-			suggestions.sort(String.CASE_INSENSITIVE_ORDER);
-		}
-		return suggestions;
+	public void register() {
+		var actionArgument = new StringArgument("action")
+			.replaceSuggestions(ArgumentSuggestions.strings(ALL_OPTION_ALIASES.toArray(String[]::new)));
+		new CommandAPICommand("manageteamchat")
+			.withAliases("discordsrv-team-chat", "discordsrvteamchat", "discordteamchat")
+			.withPermission("teamchat.manage")
+			.withOptionalArguments(actionArgument)
+			.executes((sender, args) -> {
+				@NullOr String option = (String) args.get("action");
+				if (option == null || option.isBlank()) {
+					usage(sender, "manageteamchat");
+					return;
+				}
+				option = option.toLowerCase(Locale.ROOT);
+				if (HELP_ALIASES.contains(option)) {
+					usage(sender, "manageteamchat");
+				} else if (RELOAD_ALIASES.contains(option)) {
+					reload(sender);
+				} else if (DEBUG_ALIASES.contains(option)) {
+					debug(sender);
+				} else {
+					sender.sendMessage(colorful(
+						"&9&lDiscordSRV-Team-Chat&f: &7&oUnknown arguments: " + option
+					));
+				}
+			})
+			.register();
 	}
 	
 	private void usage(CommandSender sender, String label) {

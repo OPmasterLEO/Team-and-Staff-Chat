@@ -24,35 +24,30 @@ package com.rezzedup.discordsrv.staffchat.commands;
 
 import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
 import com.rezzedup.discordsrv.staffchat.StaffChatProfile;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.executors.PlayerCommandExecutor;
 
-public class ToggleTeamChatSoundsCommand implements CommandExecutor {
+public class ToggleTeamChatSoundsCommand {
 	private final StaffChatPlugin plugin;
 	
 	public ToggleTeamChatSoundsCommand(StaffChatPlugin plugin) {
 		this.plugin = plugin;
 	}
 	
-	@Override
-	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		if (sender instanceof Player) {
-			StaffChatProfile profile = plugin.data().getOrCreateProfile((Player) sender);
-			boolean unmuting = !profile.receivesTeamChatSounds();
-			
-			profile.receivesTeamChatSounds(unmuting);
-			
-			if (unmuting) {
-				plugin.messages().notifyTeamSoundsUnmuted((Player) sender);
-			} else {
-				plugin.messages().notifyTeamSoundsMuted((Player) sender);
-			}
-		} else {
-			sender.sendMessage("Only players may run this command.");
-		}
-		
-		return true;
+	public void register() {
+		new CommandAPICommand("toggleteamchatsounds")
+			.withAliases("toggletcsounds")
+			.withPermission("teamchat.access")
+			.executesPlayer((PlayerCommandExecutor) (player, args) -> {
+				StaffChatProfile profile = plugin.data().getOrCreateProfile(player);
+				boolean unmuting = !profile.receivesTeamChatSounds();
+				profile.receivesTeamChatSounds(unmuting);
+				if (unmuting) {
+					plugin.messages().notifyTeamSoundsUnmuted(player);
+				} else {
+					plugin.messages().notifyTeamSoundsMuted(player);
+				}
+			})
+			.register();
 	}
 }
