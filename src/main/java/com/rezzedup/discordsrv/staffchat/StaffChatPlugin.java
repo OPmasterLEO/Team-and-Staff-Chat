@@ -25,8 +25,8 @@ package com.rezzedup.discordsrv.staffchat;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;

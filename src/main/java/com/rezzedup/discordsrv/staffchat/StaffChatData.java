@@ -22,10 +22,10 @@
  */
 package com.rezzedup.discordsrv.staffchat;
 
-import org.bukkit.entity.Player;
-
 import java.util.Optional;
 import java.util.UUID;
+
+import org.bukkit.entity.Player;
 
 public interface StaffChatData {
 	StaffChatProfile getOrCreateProfile(UUID uuid);

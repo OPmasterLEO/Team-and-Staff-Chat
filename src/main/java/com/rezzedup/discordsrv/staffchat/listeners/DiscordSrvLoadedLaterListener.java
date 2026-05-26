@@ -22,10 +22,12 @@
  */
 package com.rezzedup.discordsrv.staffchat.listeners;
 
-import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
-import community.leaf.eventful.bukkit.annotations.EventListener;
 import org.bukkit.event.Listener;
 import org.bukkit.event.server.PluginEnableEvent;
+
+import com.rezzedup.discordsrv.staffchat.StaffChatPlugin;
+
+import community.leaf.eventful.bukkit.annotations.EventListener;
 
 public class DiscordSrvLoadedLaterListener implements Listener {
 	private final StaffChatPlugin plugin;
