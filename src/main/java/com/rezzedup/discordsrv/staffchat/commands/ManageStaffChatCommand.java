@@ -123,6 +123,8 @@ public class ManageStaffChatCommand {
 		plugin.messages().reload();
 		plugin.data().reload();
 		plugin.updater().reload();
+		plugin.refreshPrefixedChatCache();
+		plugin.invalidatePlayerCache();
 		
 		sender.sendMessage(colorful("&9&lDiscordSRV-Staff-Chat&f: Reloaded."));
 	}

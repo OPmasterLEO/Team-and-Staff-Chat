@@ -116,6 +116,8 @@ public class ManageTeamChatCommand {
 		plugin.messages().reload();
 		plugin.data().reload();
 		plugin.updater().reload();
+		plugin.refreshPrefixedChatCache();
+		plugin.invalidatePlayerCache();
 		
 		sender.sendMessage(colorful("&9&lDiscordSRV-Team-Chat&f: Reloaded."));
 	}

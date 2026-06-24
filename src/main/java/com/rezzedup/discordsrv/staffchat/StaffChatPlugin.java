@@ -48,12 +48,14 @@ import com.rezzedup.discordsrv.staffchat.commands.ToggleTeamChatCommand;
 import com.rezzedup.discordsrv.staffchat.commands.ToggleTeamChatSoundsCommand;
 import com.rezzedup.discordsrv.staffchat.config.MessagesConfig;
 import com.rezzedup.discordsrv.staffchat.config.StaffChatConfig;
+import com.rezzedup.discordsrv.staffchat.listeners.ChatLeakGuardListener;
 import com.rezzedup.discordsrv.staffchat.listeners.DiscordSrvLoadedLaterListener;
 import com.rezzedup.discordsrv.staffchat.listeners.DiscordStaffChatListener;
 import com.rezzedup.discordsrv.staffchat.listeners.JoinNotificationListener;
 import com.rezzedup.discordsrv.staffchat.listeners.PlayerPrefixedMessageListener;
 import com.rezzedup.discordsrv.staffchat.listeners.PlayerStaffChatToggleListener;
 import com.rezzedup.discordsrv.staffchat.listeners.PlayerTeamChatToggleListener;
+import com.rezzedup.discordsrv.staffchat.security.OutgoingChatPacketGuard;
 import com.rezzedup.discordsrv.staffchat.util.FileIO;
 
 import community.leaf.configvalues.bukkit.YamlValue;
@@ -90,10 +92,20 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 	private String serverType;
 	private volatile boolean placeholderApiPresent;
 	
-	private volatile java.util.List<Player> cachedStaffParticipants = java.util.Collections.emptyList();
-	private volatile java.util.List<Player> cachedTeamParticipants = java.util.Collections.emptyList();
-	private volatile long lastPlayerCacheUpdate = 0;
+	private @NullOr PlayerPrefixedMessageListener prefixedMessageListener;
+	private final java.util.concurrent.atomic.AtomicReference<ParticipantCache> participantCache =
+		new java.util.concurrent.atomic.AtomicReference<>(ParticipantCache.empty());
 	private static final long PLAYER_CACHE_TTL_MS = 1000;
+
+	private record ParticipantCache(java.util.List<Player> staff, java.util.List<Player> team, long timestamp) {
+		private static ParticipantCache empty() {
+			return new ParticipantCache(java.util.List.of(), java.util.List.of(), 0L);
+		}
+
+		private boolean isExpired(long now, long ttlMs) {
+			return timestamp == 0L || now - timestamp > ttlMs;
+		}
+	}
 	
 	private static TaskScheduler scheduler;
 
@@ -137,9 +149,11 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 		this.processor = new MessageProcessor(this);
 		
 		events().register(new JoinNotificationListener(this));
-		events().register(new PlayerPrefixedMessageListener(this));
+		events().register(prefixedMessageListener = new PlayerPrefixedMessageListener(this));
 		events().register(new PlayerStaffChatToggleListener(this));
 		events().register(new PlayerTeamChatToggleListener(this));
+		getServer().getPluginManager().registerEvents(new ChatLeakGuardListener(), this);
+		OutgoingChatPacketGuard.register(this);
 
 		registerCommands(v.toString());
 		
@@ -181,35 +195,37 @@ public class StaffChatPlugin extends JavaPlugin implements BukkitEventSource, St
 	 * Uses a short TTL cache to avoid repeated permission checks and stream operations.
 	 */
 	public java.util.List<Player> getCachedStaffParticipants() {
-		long now = System.currentTimeMillis();
-		if (now - lastPlayerCacheUpdate > PLAYER_CACHE_TTL_MS) {
-			synchronized (this) {
-				// Double-check after acquiring lock
-				if (now - lastPlayerCacheUpdate > PLAYER_CACHE_TTL_MS) {
-					cachedStaffParticipants = onlineStaffChatParticipants()
-						.collect(java.util.stream.Collectors.toList());
-					cachedTeamParticipants = onlineTeamChatParticipants()
-						.collect(java.util.stream.Collectors.toList());
-					lastPlayerCacheUpdate = now;
-				}
-			}
-		}
-		return cachedStaffParticipants;
+		return refreshParticipantCacheIfNeeded().staff();
 	}
-	
-	/**
-	 * Get cached list of online team chat participants.
-	 */
+
 	public java.util.List<Player> getCachedTeamParticipants() {
-		getCachedStaffParticipants(); // Ensures both caches are refreshed together
-		return cachedTeamParticipants;
+		return refreshParticipantCacheIfNeeded().team();
 	}
-	
-	/**
-	 * Invalidate player cache (call on join/quit events).
-	 */
+
 	public void invalidatePlayerCache() {
-		lastPlayerCacheUpdate = 0;
+		participantCache.set(ParticipantCache.empty());
+	}
+
+	public void refreshPrefixedChatCache() {
+		if (prefixedMessageListener != null) {
+			prefixedMessageListener.refreshCache();
+		}
+	}
+
+	private ParticipantCache refreshParticipantCacheIfNeeded() {
+		long now = System.currentTimeMillis();
+		ParticipantCache current = participantCache.get();
+		if (!current.isExpired(now, PLAYER_CACHE_TTL_MS)) {
+			return current;
+		}
+
+		ParticipantCache refreshed = new ParticipantCache(
+			onlineStaffChatParticipants().map(player -> (Player) player).toList(),
+			onlineTeamChatParticipants().map(player -> (Player) player).toList(),
+			now
+		);
+		participantCache.set(refreshed);
+		return refreshed;
 	}
 	
 	@Override

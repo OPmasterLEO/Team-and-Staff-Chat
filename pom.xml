@@ -109,6 +109,13 @@
       <version>0.2.0</version>
       <!-- Note: scope must be visible to dependent projects otherwise nullness annotations will not work as intended -->
     </dependency>
+    <!-- Netty (provided by the server; used for outgoing chat packet guard) -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport</artifactId>
+      <version>4.1.118.Final</version>
+      <scope>provided</scope>
+    </dependency>
     <!-- UniversalScheduler -->
     <dependency>
       <groupId>com.github.Anon8281</groupId>
